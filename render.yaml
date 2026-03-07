@@ -23,10 +23,6 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_PATH
-        value: /data/jobs.db
+        value: jobs.db
       - key: PYTHON_VERSION
         value: 3.11.6
-    disk:
-      name: job-data
-      mountPath: /data
-      sizeGB: 1
