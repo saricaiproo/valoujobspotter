@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="settings-page">
+    <div class="page-header">
+        <h1>Parametres</h1>
+        <p>Personnalise ta recherche d'emploi</p>
+    </div>
+
+    <!-- Keywords -->
+    <div class="settings-section">
+        <h2>Mots-cles de recherche</h2>
+        <div class="keywords-list">
+            {% for kw in keywords %}
+            <div class="keyword-item">
+                <span class="keyword-text {% if not kw.active %}inactive{% endif %}">{{ kw.keyword }}</span>
+                <div class="keyword-actions">
+                    <form method="POST" action="{{ url_for('toggle_keyword', keyword_id=kw.id) }}" class="inline-form">
+                        <button type="submit" class="btn-small {% if kw.active %}btn-active{% else %}btn-inactive{% endif %}">
+                            {% if kw.active %}Actif{% else %}Inactif{% endif %}
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('delete_keyword', keyword_id=kw.id) }}" class="inline-form">
+                        <button type="submit" class="btn-small btn-danger">Supprimer</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <form method="POST" action="{{ url_for('add_keyword') }}" class="add-form">
+            <input type="text" name="keyword" placeholder="Ajouter un mot-cle..." required>
+            <button type="submit" class="btn btn-primary">Ajouter</button>
+        </form>
+    </div>
+
+    <!-- Filters -->
+    <div class="settings-section">
+        <h2>Filtres</h2>
+        <form method="POST" action="{{ url_for('save_settings') }}">
+            <div class="form-group">
+                <label>Type de travail</label>
+                <div class="checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="work_types" value="teletravail" {% if 'teletravail' in work_types %}checked{% endif %}>
+                        Teletravail
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="work_types" value="hybride" {% if 'hybride' in work_types %}checked{% endif %}>
+                        Hybride
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="work_types" value="presentiel" {% if 'presentiel' in work_types %}checked{% endif %}>
+                        Presentiel
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Type de poste</label>
+                <div class="checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="job_types" value="temps_plein" {% if 'temps_plein' in job_types %}checked{% endif %}>
+                        Temps plein
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="job_types" value="temps_partiel" {% if 'temps_partiel' in job_types %}checked{% endif %}>
+                        Temps partiel
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="job_types" value="contrat" {% if 'contrat' in job_types %}checked{% endif %}>
+                        Contrat
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="job_types" value="stage" {% if 'stage' in job_types %}checked{% endif %}>
+                        Stage
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="job_types" value="pigiste" {% if 'pigiste' in job_types %}checked{% endif %}>
+                        Pigiste / Freelance
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="salary_min">Salaire minimum ($)</label>
+                    <input type="number" id="salary_min" name="salary_min" value="{{ salary_min }}" step="1000">
+                </div>
+                <div class="form-group">
+                    <label for="salary_max">Salaire maximum ($)</label>
+                    <input type="number" id="salary_max" name="salary_max" value="{{ salary_max }}" step="1000">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="date_range">Offres des derniers</label>
+                <select id="date_range" name="date_range_days">
+                    <option value="1" {% if date_range == '1' %}selected{% endif %}>24 heures</option>
+                    <option value="3" {% if date_range == '3' %}selected{% endif %}>3 jours</option>
+                    <option value="7" {% if date_range == '7' %}selected{% endif %}>7 jours</option>
+                    <option value="14" {% if date_range == '14' %}selected{% endif %}>14 jours</option>
+                    <option value="30" {% if date_range == '30' %}selected{% endif %}>30 jours</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Localisations</label>
+                <div id="locations-list">
+                    {% for loc in locations %}
+                    <div class="location-item">
+                        <input type="text" name="locations" value="{{ loc }}">
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="button" class="btn btn-secondary btn-small" onclick="addLocation()">+ Ajouter une localisation</button>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Sauvegarder les filtres</button>
+        </form>
+    </div>
+
+    <!-- Email Settings -->
+    <div class="settings-section">
+        <h2>Courriel quotidien</h2>
+        <form method="POST" action="{{ url_for('save_email_settings') }}">
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="email_enabled" {% if email_enabled %}checked{% endif %}>
+                    Activer l'envoi quotidien par courriel
+                </label>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="email_hour">Heure d'envoi</label>
+                    <select id="email_hour" name="email_hour">
+                        {% for h in range(24) %}
+                        <option value="{{ h }}" {% if email_hour == h|string %}selected{% endif %}>{{ '%02d'|format(h) }}h</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="email_minute">Minute</label>
+                    <select id="email_minute" name="email_minute">
+                        {% for m in range(0, 60, 15) %}
+                        <option value="{{ m }}" {% if email_minute == m|string %}selected{% endif %}>{{ '%02d'|format(m) }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Sauvegarder</button>
+        </form>
+    </div>
+
+    <!-- Custom Job Boards -->
+    <div class="settings-section">
+        <h2>Sites d'emploi personnalises</h2>
+        <p class="section-desc">Ajoute des sites d'emploi supplementaires a surveiller.</p>
+        {% if custom_boards %}
+        <div class="boards-list">
+            {% for board in custom_boards %}
+            <div class="board-item">
+                <span class="board-name">{{ board.name }}</span>
+                <span class="board-url">{{ board.base_url }}</span>
+                <form method="POST" action="{{ url_for('delete_board', board_id=board.id) }}" class="inline-form">
+                    <button type="submit" class="btn-small btn-danger">Supprimer</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        <form method="POST" action="{{ url_for('add_board') }}" class="add-form board-form">
+            <input type="text" name="name" placeholder="Nom du site" required>
+            <input type="url" name="base_url" placeholder="https://exemple.com/emplois" required>
+            <button type="submit" class="btn btn-primary">Ajouter</button>
+        </form>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+function addLocation() {
+    const list = document.getElementById('locations-list');
+    const div = document.createElement('div');
+    div.className = 'location-item';
+    div.innerHTML = '<input type="text" name="locations" placeholder="Nouvelle localisation">';
+    list.appendChild(div);
+}
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="jobs-page">
+    <div class="page-header">
+        <h1>Toutes les offres</h1>
+        <p>{{ total }} offre(s) trouvee(s)</p>
+    </div>
+
+    <div class="filters-bar">
+        <form method="GET" action="{{ url_for('jobs_list') }}" class="filters-form">
+            <select name="source" onchange="this.form.submit()">
+                <option value="">Toutes les sources</option>
+                {% for s in sources %}
+                <option value="{{ s }}" {% if source_filter == s %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    {% if jobs %}
+    {% for job in jobs %}
+    <div class="job-card">
+        <div class="job-card-header">
+            <h3><a href="{{ job.url }}" target="_blank">{{ job.title }}</a></h3>
+            <div class="job-actions">
+                <form method="POST" action="{{ url_for('toggle_fav', job_id=job.id) }}" class="inline-form">
+                    <button type="submit" class="btn-icon {% if job.favorite %}active{% endif %}" title="Favori">
+                        {% if job.favorite %}&#9733;{% else %}&#9734;{% endif %}
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('toggle_hide', job_id=job.id) }}" class="inline-form">
+                    <button type="submit" class="btn-icon" title="Masquer">&#10005;</button>
+                </form>
+            </div>
+        </div>
+        <div class="job-meta">
+            <span class="company">{{ job.company or 'Non specifie' }}</span>
+            <span class="location">{{ job.location }}</span>
+        </div>
+        <div class="job-badges">
+            {% if job.work_type %}
+            <span class="badge">{{ job.work_type|replace('teletravail', 'Teletravail')|replace('hybride', 'Hybride')|replace('presentiel', 'Presentiel') }}</span>
+            {% endif %}
+            <span class="badge badge-source">{{ job.source }}</span>
+            {% if job.salary %}
+            <span class="badge badge-salary">{{ job.salary }}</span>
+            {% endif %}
+        </div>
+        {% if job.description %}
+        <p class="job-desc">{{ job.description[:300] }}{% if job.description|length > 300 %}...{% endif %}</p>
+        {% endif %}
+        <div class="job-date">Trouve le {{ job.date_scraped[:10] if job.date_scraped else '' }}</div>
+    </div>
+    {% endfor %}
+
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="{{ url_for('jobs_list', page=page-1, source=source_filter) }}" class="btn btn-secondary">Precedent</a>
+        {% endif %}
+        <span class="page-info">Page {{ page }} / {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="{{ url_for('jobs_list', page=page+1, source=source_filter) }}" class="btn btn-secondary">Suivant</a>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>Aucune offre trouvee. Lance une recherche pour commencer!</p>
+        <form method="POST" action="{{ url_for('trigger_scrape') }}">
+            <button type="submit" class="btn btn-primary">Lancer une recherche</button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

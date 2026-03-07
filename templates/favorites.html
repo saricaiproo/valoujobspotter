@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="jobs-page">
+    <div class="page-header">
+        <h1>Mes favoris</h1>
+        <p>{{ total }} offre(s) sauvegardee(s)</p>
+    </div>
+
+    {% if jobs %}
+    {% for job in jobs %}
+    <div class="job-card">
+        <div class="job-card-header">
+            <h3><a href="{{ job.url }}" target="_blank">{{ job.title }}</a></h3>
+            <div class="job-actions">
+                <form method="POST" action="{{ url_for('toggle_fav', job_id=job.id) }}" class="inline-form">
+                    <button type="submit" class="btn-icon active" title="Retirer des favoris">&#9733;</button>
+                </form>
+            </div>
+        </div>
+        <div class="job-meta">
+            <span class="company">{{ job.company or 'Non specifie' }}</span>
+            <span class="location">{{ job.location }}</span>
+        </div>
+        <div class="job-badges">
+            {% if job.work_type %}
+            <span class="badge">{{ job.work_type|replace('teletravail', 'Teletravail')|replace('hybride', 'Hybride')|replace('presentiel', 'Presentiel') }}</span>
+            {% endif %}
+            <span class="badge badge-source">{{ job.source }}</span>
+            {% if job.salary %}
+            <span class="badge badge-salary">{{ job.salary }}</span>
+            {% endif %}
+        </div>
+        {% if job.description %}
+        <p class="job-desc">{{ job.description[:300] }}{% if job.description|length > 300 %}...{% endif %}</p>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="{{ url_for('favorites', page=page-1) }}" class="btn btn-secondary">Precedent</a>
+        {% endif %}
+        <span class="page-info">Page {{ page }} / {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="{{ url_for('favorites', page=page+1) }}" class="btn btn-secondary">Suivant</a>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>Aucun favori pour l'instant. Ajoute des offres a tes favoris en cliquant sur l'etoile!</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

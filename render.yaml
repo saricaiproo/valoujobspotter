@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: valou-job-scout
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: SMTP_SERVER
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_LOGIN
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: RECIPIENT_EMAIL
+        sync: false
+      - key: SENDER_EMAIL
+        sync: false
+      - key: APP_PASSWORD
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_PATH
+        value: /data/jobs.db
+      - key: PYTHON_VERSION
+        value: 3.11.6
+    disk:
+      name: job-data
+      mountPath: /data
+      sizeGB: 1
