@@ -2,7 +2,7 @@
 <div class="job-card {% if job.work_type == 'teletravail' %}job-card--remote{% elif job.work_type == 'hybride' %}job-card--hybrid{% endif %}">
     <div class="job-card-top">
         <div class="job-card-header">
-            <h3 class="job-title"><a href="{{ job.url }}" target="_blank" rel="noopener">{{ job.title }}</a></h3>
+            <h3 class="job-title"><a href="#" onclick="openJobModal(this); return false;" data-job='{{ job|job_modal_data }}'>{{ job.title }}</a></h3>
             <div class="job-actions">
                 <form method="POST" action="{{ url_for('toggle_fav', job_id=job.id) }}" class="inline-form">
                     <button type="submit" class="btn-icon {% if job.favorite %}active{% endif %}" title="Favori">
@@ -24,6 +24,9 @@
             {% if job.location %}
             <span class="job-location">{{ job.location }}</span>
             {% endif %}
+            {% if job.date_posted %}
+            <span class="job-date-posted">Publiée {{ job.date_posted|format_posted_date }}</span>
+            {% endif %}
             <span class="job-time">{{ job.date_scraped|relative_date }}</span>
         </div>
     </div>
@@ -33,13 +36,13 @@
         <div class="status-item">
             <span class="status-label">Mode</span>
             {% if job.work_type == 'teletravail' %}
-            <span class="tag tag-remote">Teletravail</span>
+            <span class="tag tag-remote">Télétravail</span>
             {% elif job.work_type == 'hybride' %}
             <span class="tag tag-hybrid">Hybride</span>
             {% elif job.work_type == 'presentiel' %}
-            <span class="tag tag-onsite">Presentiel</span>
+            <span class="tag tag-onsite">Présentiel</span>
             {% else %}
-            <span class="tag tag-unknown">Non specifie</span>
+            <span class="tag tag-unknown">Non spécifié</span>
             {% endif %}
         </div>
 
@@ -48,7 +51,7 @@
             {% if job.job_type %}
             <span class="tag tag-type">{{ job.job_type }}</span>
             {% else %}
-            <span class="tag tag-unknown">Non specifie</span>
+            <span class="tag tag-unknown">Non spécifié</span>
             {% endif %}
         </div>
 
@@ -57,14 +60,16 @@
             {% if job.salary %}
             <span class="tag tag-salary">{{ job.salary }}</span>
             {% else %}
-            <span class="tag tag-unknown">Non specifie</span>
+            <span class="tag tag-unknown">Non spécifié</span>
             {% endif %}
         </div>
     </div>
 
     {% if job.description %}
     <div class="job-desc-section">
-        <p class="job-desc">{{ job.description[:400] }}{% if job.description|length > 400 %}...{% endif %}</p>
+        <p class="job-desc">{{ job.description[:200] }}{% if job.description|length > 200 %}...
+            <a href="#" class="read-more-link" onclick="openJobModal(this.closest('.job-card').querySelector('.job-title a')); return false;">Lire plus</a>
+        {% endif %}</p>
     </div>
     {% endif %}
 

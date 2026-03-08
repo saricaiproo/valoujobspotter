@@ -22,12 +22,12 @@
                 <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">Tableau de bord</a>
                 <a href="{{ url_for('jobs_list') }}" class="{% if request.endpoint == 'jobs_list' %}active{% endif %}">Offres</a>
                 <a href="{{ url_for('favorites') }}" class="{% if request.endpoint == 'favorites' %}active{% endif %}">Favoris</a>
-                <a href="{{ url_for('settings') }}" class="{% if request.endpoint == 'settings' %}active{% endif %}">Parametres</a>
+                <a href="{{ url_for('settings') }}" class="{% if request.endpoint == 'settings' %}active{% endif %}">Paramètres</a>
                 <button class="theme-toggle" onclick="toggleTheme()" title="Mode sombre">
                     <span class="theme-icon-light">&#9790;</span>
                     <span class="theme-icon-dark">&#9788;</span>
                 </button>
-                <a href="{{ url_for('logout') }}" class="nav-logout">Deconnexion</a>
+                <a href="{{ url_for('logout') }}" class="nav-logout">Déconnexion</a>
             </div>
             <div class="nav-right-mobile">
                 <button class="theme-toggle" onclick="toggleTheme()" title="Mode sombre">
@@ -58,6 +58,28 @@
         <p>Valou Job Scout &mdash; Ta chercheuse d'emploi personnelle</p>
     </footer>
 
+    <!-- Job Detail Modal -->
+    <div class="job-modal-overlay" id="job-modal-overlay" onclick="closeJobModal(event)">
+        <div class="job-modal">
+            <button class="job-modal-close" onclick="closeJobModal()" title="Fermer">&times;</button>
+            <div class="job-modal-header">
+                <h2 class="job-modal-title" id="modal-title"></h2>
+                <div class="job-modal-meta">
+                    <span class="job-modal-company" id="modal-company"></span>
+                    <span class="job-modal-location" id="modal-location"></span>
+                    <span class="job-modal-date" id="modal-date"></span>
+                </div>
+            </div>
+            <div class="job-modal-statuses" id="modal-statuses"></div>
+            <div class="job-modal-highlights" id="modal-highlights"></div>
+            <div class="job-modal-description" id="modal-description"></div>
+            <div class="job-modal-footer">
+                <span class="tag tag-source" id="modal-source"></span>
+                <a href="#" target="_blank" rel="noopener" class="btn btn-apply" id="modal-link">Voir l'offre originale &rarr;</a>
+            </div>
+        </div>
+    </div>
+
     <script>
         function toggleTheme() {
             const html = document.documentElement;
@@ -66,6 +88,69 @@
             html.setAttribute('data-theme', next);
             localStorage.setItem('theme', next);
         }
+
+        function openJobModal(el) {
+            const data = JSON.parse(el.getAttribute('data-job'));
+            const overlay = document.getElementById('job-modal-overlay');
+
+            document.getElementById('modal-title').textContent = data.title;
+            document.getElementById('modal-company').textContent = data.company || '';
+            document.getElementById('modal-location').textContent = data.location || '';
+            document.getElementById('modal-date').textContent = data.date_posted ? 'Publiée ' + data.date_posted : '';
+            document.getElementById('modal-source').textContent = data.source || '';
+            document.getElementById('modal-link').href = data.url;
+
+            // Statuses
+            const statusesEl = document.getElementById('modal-statuses');
+            statusesEl.innerHTML = '';
+            const statuses = [
+                { label: 'Mode', value: data.work_type, type: data.work_type === 'teletravail' ? 'remote' : data.work_type === 'hybride' ? 'hybrid' : data.work_type === 'presentiel' ? 'onsite' : 'unknown', display: data.work_type === 'teletravail' ? 'Télétravail' : data.work_type === 'hybride' ? 'Hybride' : data.work_type === 'presentiel' ? 'Présentiel' : 'Non spécifié' },
+                { label: 'Type', value: data.job_type, type: data.job_type ? 'type' : 'unknown', display: data.job_type || 'Non spécifié' },
+                { label: 'Salaire', value: data.salary, type: data.salary ? 'salary' : 'unknown', display: data.salary || 'Non spécifié' },
+            ];
+            statuses.forEach(s => {
+                const item = document.createElement('div');
+                item.className = 'status-item';
+                item.innerHTML = `<span class="status-label">${s.label}</span><span class="tag tag-${s.type}">${s.display}</span>`;
+                statusesEl.appendChild(item);
+            });
+
+            // Highlights
+            const highlightsEl = document.getElementById('modal-highlights');
+            highlightsEl.innerHTML = '';
+            if (data.highlights && data.highlights.length) {
+                data.highlights.forEach(h => {
+                    const chip = document.createElement('span');
+                    chip.className = 'highlight-chip';
+                    chip.textContent = h;
+                    highlightsEl.appendChild(chip);
+                });
+            }
+
+            // Description
+            const descEl = document.getElementById('modal-description');
+            if (data.description) {
+                descEl.innerHTML = '<p>' + data.description.replace(/\n/g, '</p><p>') + '</p>';
+            } else {
+                descEl.innerHTML = '<p class="no-desc">Aucune description disponible. Consultez l\'offre originale pour plus de détails.</p>';
+            }
+
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeJobModal(event) {
+            if (event && event.target !== document.getElementById('job-modal-overlay')) return;
+            document.getElementById('job-modal-overlay').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.getElementById('job-modal-overlay').classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        });
     </script>
     {% block scripts %}{% endblock %}
 </body>

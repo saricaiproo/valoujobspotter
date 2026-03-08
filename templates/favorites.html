@@ -5,7 +5,7 @@
 <div class="jobs-page">
     <div class="page-header">
         <h1>Mes favoris</h1>
-        <p>{{ total }} offre(s) sauvegardee(s)</p>
+        <p>{{ total }} offre(s) sauvegardée(s)</p>
     </div>
 
     {% if jobs %}
@@ -15,7 +15,7 @@
 
     <div class="pagination">
         {% if page > 1 %}
-        <a href="{{ url_for('favorites', page=page-1) }}" class="btn btn-secondary">Precedent</a>
+        <a href="{{ url_for('favorites', page=page-1) }}" class="btn btn-secondary">Précédent</a>
         {% endif %}
         <span class="page-info">Page {{ page }} / {{ total_pages }}</span>
         {% if page < total_pages %}
@@ -24,7 +24,7 @@
     </div>
     {% else %}
     <div class="empty-state">
-        <p>Aucun favori pour l'instant. Ajoute des offres a tes favoris en cliquant sur l'etoile!</p>
+        <p>Aucun favori pour l'instant. Ajoute des offres à tes favoris en cliquant sur l'étoile!</p>
     </div>
     {% endif %}
 </div>

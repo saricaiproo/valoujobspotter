@@ -3,8 +3,8 @@
 {% block content %}
 <div class="dashboard">
     <div class="page-header">
-        <h1>Bonjour Valerie</h1>
-        <p>Voici ton resume d'aujourd'hui</p>
+        <h1>Bonjour Valérie</h1>
+        <p>Voici ton résumé d'aujourd'hui</p>
     </div>
 
     <div class="stats-grid">
@@ -51,10 +51,10 @@
                 <button type="submit" class="btn btn-secondary">Tester le courriel</button>
             </form>
             <form method="POST" action="{{ url_for('cleanup_db') }}">
-                <button type="submit" class="btn btn-secondary">Nettoyer les donnees</button>
+                <button type="submit" class="btn btn-secondary">Nettoyer les données</button>
             </form>
             <form method="POST" action="{{ url_for('reset_and_rescrape') }}">
-                <button type="submit" class="btn btn-danger" onclick="return confirm('Supprimer toutes les offres et relancer une recherche complete?')">Tout effacer et rescanner</button>
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Supprimer toutes les offres et relancer une recherche complète?')">Tout effacer et rescanner</button>
             </form>
         </div>
     </div>
@@ -98,6 +98,7 @@
             <div class="loading-text">
                 <p class="loading-message" id="loading-message">Recherche en cours...</p>
                 <p class="loading-sub">Notre petite coccinelle cherche les meilleures offres pour toi</p>
+                <a href="#" class="loading-cancel" onclick="cancelLoading(); return false;">Fermer et recharger</a>
             </div>
         </div>
     </div>
@@ -105,7 +106,7 @@
     {% from "macros/job_card.html" import render_job_card %}
     {% if recent_jobs %}
     <div class="section">
-        <h2>Offres recentes</h2>
+        <h2>Offres récentes</h2>
         {% for job in recent_jobs %}
             {{ render_job_card(job) }}
         {% endfor %}
@@ -118,19 +119,24 @@
 {% block scripts %}
 <script>
 let pollInterval = null;
+let pollCount = 0;
+const MAX_POLLS = 60; // 60 * 3s = 3 minutes max
 
 function stopLoading(message) {
     clearInterval(pollInterval);
+    pollInterval = null;
+    pollCount = 0;
     const overlay = document.getElementById('loading-overlay');
     const btn = document.getElementById('scrape-btn');
     const msg = document.getElementById('loading-message');
-    msg.textContent = message || 'Termine!';
+    if (msg) msg.textContent = message || 'Terminé!';
     setTimeout(() => {
         overlay.classList.remove('active');
         btn.disabled = false;
         btn.textContent = 'Lancer une recherche maintenant';
+        document.body.style.overflow = '';
         window.location.reload();
-    }, 1500);
+    }, 1200);
 }
 
 function startScrape() {
@@ -140,14 +146,11 @@ function startScrape() {
     btn.disabled = true;
     btn.textContent = 'Recherche en cours...';
     overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    pollCount = 0;
 
     fetch('{{ url_for("trigger_scrape") }}', { method: 'POST', credentials: 'same-origin' })
-        .then(r => {
-            if (!r.ok || !r.headers.get('content-type')?.includes('json')) {
-                throw new Error('Bad response');
-            }
-            return r.json();
-        })
+        .then(r => r.json())
         .then(data => {
             if (data.status === 'already_running') {
                 document.getElementById('loading-message').textContent = 'Une recherche est deja en cours...';
@@ -155,44 +158,55 @@ function startScrape() {
             pollInterval = setInterval(checkStatus, 3000);
         })
         .catch(() => {
-            overlay.classList.remove('active');
-            btn.disabled = false;
-            btn.textContent = 'Lancer une recherche maintenant';
+            stopLoading('Recherche lancée! Rechargement...');
         });
 }
 
 function checkStatus() {
+    pollCount++;
+
+    // Safety: auto-close after max polls
+    if (pollCount >= MAX_POLLS) {
+        stopLoading('Recherche terminée! (délai max atteint)');
+        return;
+    }
+
     fetch('{{ url_for("scrape_progress") }}', { credentials: 'same-origin' })
         .then(r => {
-            if (!r.ok || !r.headers.get('content-type')?.includes('json')) {
-                throw new Error('Bad response');
-            }
+            if (!r.ok) throw new Error('not ok');
             return r.json();
         })
         .then(data => {
             const msg = document.getElementById('loading-message');
-            msg.textContent = data.message || 'Recherche en cours...';
+            if (msg) msg.textContent = data.message || 'Recherche en cours...';
 
             if (!data.running) {
                 stopLoading(data.message);
             }
         })
         .catch(() => {
-            stopLoading('Recherche terminee!');
+            // If fetch fails (session expired, network error), just close
+            stopLoading('Recherche terminée!');
         });
 }
 
-// Make bug interactive - follow clicks
+// Close overlay on click of cancel link
+function cancelLoading() {
+    stopLoading('Annulé. Rechargement...');
+}
+
+// Make bug interactive
 document.addEventListener('DOMContentLoaded', () => {
     const overlay = document.getElementById('loading-overlay');
     const bug = document.getElementById('pixel-bug');
-
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay || e.target.closest('.loading-scene')) {
-            bug.classList.add('jump');
-            setTimeout(() => bug.classList.remove('jump'), 500);
-        }
-    });
+    if (overlay && bug) {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay || e.target.closest('.loading-scene')) {
+                bug.classList.add('jump');
+                setTimeout(() => bug.classList.remove('jump'), 500);
+            }
+        });
+    }
 });
 </script>
 {% endblock %}

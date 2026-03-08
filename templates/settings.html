@@ -3,14 +3,14 @@
 {% block content %}
 <div class="settings-page">
     <div class="page-header">
-        <h1>Parametres</h1>
+        <h1>Paramètres</h1>
         <p>Personnalise ta recherche d'emploi</p>
     </div>
 
     <!-- Conditions / Filters -->
     <div class="settings-section settings-section--highlight">
         <h2>Mes conditions</h2>
-        <p class="section-desc">Seules les offres qui correspondent a tes conditions seront affichees. Les offres sans information seront incluses par defaut.</p>
+        <p class="section-desc">Seules les offres qui correspondent à tes conditions seront affichées. Les offres sans information seront incluses par défaut.</p>
         <form method="POST" action="{{ url_for('save_settings') }}">
 
             <!-- Status 1: Work Mode -->
@@ -19,7 +19,7 @@
                 <div class="checkbox-group">
                     <label class="checkbox-label">
                         <input type="checkbox" name="work_types" value="teletravail" {% if 'teletravail' in work_types %}checked{% endif %}>
-                        Teletravail
+                        Télétravail
                     </label>
                     <label class="checkbox-label">
                         <input type="checkbox" name="work_types" value="hybride" {% if 'hybride' in work_types %}checked{% endif %}>
@@ -27,7 +27,7 @@
                     </label>
                     <label class="checkbox-label">
                         <input type="checkbox" name="work_types" value="presentiel" {% if 'presentiel' in work_types %}checked{% endif %}>
-                        Presentiel
+                        Présentiel
                     </label>
                 </div>
             </div>
@@ -77,7 +77,7 @@
             <div class="form-group">
                 <label class="checkbox-label checkbox-label--subtle">
                     <input type="checkbox" name="show_unknown" {% if show_unknown %}checked{% endif %}>
-                    Inclure les offres sans information (mode, type ou salaire non specifie)
+                    Inclure les offres sans information (mode, type ou salaire non spécifié)
                 </label>
             </div>
 
@@ -110,7 +110,7 @@
 
     <!-- Keywords -->
     <div class="settings-section">
-        <h2>Mots-cles de recherche</h2>
+        <h2>Mots-clés de recherche</h2>
         <div class="keywords-list">
             {% for kw in keywords %}
             <div class="keyword-item">
@@ -129,7 +129,7 @@
             {% endfor %}
         </div>
         <form method="POST" action="{{ url_for('add_keyword') }}" class="add-form">
-            <input type="text" name="keyword" placeholder="Ajouter un mot-cle..." required>
+            <input type="text" name="keyword" placeholder="Ajouter un mot-clé..." required>
             <button type="submit" class="btn btn-primary">Ajouter</button>
         </form>
     </div>
@@ -168,8 +168,8 @@
 
     <!-- Custom Job Boards -->
     <div class="settings-section">
-        <h2>Sites d'emploi personnalises</h2>
-        <p class="section-desc">Ajoute des sites d'emploi supplementaires a surveiller.</p>
+        <h2>Sites d'emploi personnalisés</h2>
+        <p class="section-desc">Ajoute des sites d'emploi supplémentaires à surveiller.</p>
         {% if custom_boards %}
         <div class="boards-list">
             {% for board in custom_boards %}

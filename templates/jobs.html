@@ -5,17 +5,50 @@
 <div class="jobs-page">
     <div class="page-header">
         <h1>Toutes les offres</h1>
-        <p>{{ total }} offre(s) trouvee(s)</p>
+        <p>{{ total }} offre(s) trouvée(s)</p>
     </div>
 
     <div class="filters-bar">
-        <form method="GET" action="{{ url_for('jobs_list') }}" class="filters-form">
+        <form method="GET" action="{{ url_for('jobs_list') }}" class="filters-form" id="filters-form">
+            <select name="sort" onchange="this.form.submit()">
+                <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Plus récentes</option>
+                <option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Plus anciennes</option>
+                <option value="salary" {% if sort == 'salary' %}selected{% endif %}>Salaire</option>
+            </select>
+
+            <select name="days" onchange="this.form.submit()">
+                <option value="0" {% if days == 0 %}selected{% endif %}>Toutes les dates</option>
+                <option value="1" {% if days == 1 %}selected{% endif %}>Aujourd'hui</option>
+                <option value="3" {% if days == 3 %}selected{% endif %}>3 derniers jours</option>
+                <option value="7" {% if days == 7 %}selected{% endif %}>7 derniers jours</option>
+                <option value="14" {% if days == 14 %}selected{% endif %}>14 derniers jours</option>
+                <option value="30" {% if days == 30 %}selected{% endif %}>30 derniers jours</option>
+            </select>
+
+            <select name="work_type" onchange="this.form.submit()">
+                <option value="" {% if not work_type_filter %}selected{% endif %}>Tous les modes</option>
+                <option value="teletravail" {% if work_type_filter == 'teletravail' %}selected{% endif %}>Télétravail</option>
+                <option value="hybride" {% if work_type_filter == 'hybride' %}selected{% endif %}>Hybride</option>
+                <option value="presentiel" {% if work_type_filter == 'presentiel' %}selected{% endif %}>Présentiel</option>
+            </select>
+
+            <select name="job_type" onchange="this.form.submit()">
+                <option value="" {% if not job_type_filter %}selected{% endif %}>Tous les types</option>
+                {% for jt in job_types_list %}
+                <option value="{{ jt }}" {% if job_type_filter == jt %}selected{% endif %}>{{ jt }}</option>
+                {% endfor %}
+            </select>
+
             <select name="source" onchange="this.form.submit()">
-                <option value="">Toutes les sources</option>
+                <option value="" {% if not source_filter %}selected{% endif %}>Toutes les sources</option>
                 {% for s in sources %}
                 <option value="{{ s }}" {% if source_filter == s %}selected{% endif %}>{{ s }}</option>
                 {% endfor %}
             </select>
+
+            {% if source_filter or work_type_filter or job_type_filter or days or sort != 'newest' %}
+            <a href="{{ url_for('jobs_list') }}" class="filters-reset" title="Réinitialiser les filtres">&times; Réinitialiser</a>
+            {% endif %}
         </form>
     </div>
 
@@ -26,17 +59,21 @@
 
     <div class="pagination">
         {% if page > 1 %}
-        <a href="{{ url_for('jobs_list', page=page-1, source=source_filter) }}" class="btn btn-secondary">Precedent</a>
+        <a href="{{ url_for('jobs_list', page=page-1, source=source_filter, work_type=work_type_filter, job_type=job_type_filter, sort=sort, days=days) }}" class="btn btn-secondary">Précédent</a>
         {% endif %}
         <span class="page-info">Page {{ page }} / {{ total_pages }}</span>
         {% if page < total_pages %}
-        <a href="{{ url_for('jobs_list', page=page+1, source=source_filter) }}" class="btn btn-secondary">Suivant</a>
+        <a href="{{ url_for('jobs_list', page=page+1, source=source_filter, work_type=work_type_filter, job_type=job_type_filter, sort=sort, days=days) }}" class="btn btn-secondary">Suivant</a>
         {% endif %}
     </div>
     {% else %}
     <div class="empty-state">
-        <p>Aucune offre trouvee. Lance une recherche pour commencer!</p>
+        <p>Aucune offre trouvée avec ces filtres.</p>
+        {% if source_filter or work_type_filter or job_type_filter or days %}
+        <a href="{{ url_for('jobs_list') }}" class="btn btn-secondary">Réinitialiser les filtres</a>
+        {% else %}
         <button type="button" class="btn btn-primary" onclick="window.location.href='{{ url_for('dashboard') }}'">Retour au tableau de bord</button>
+        {% endif %}
     </div>
     {% endif %}
 </div>

@@ -614,6 +614,13 @@ a:hover {
   margin: 0;
 }
 
+/* Date posted */
+.job-date-posted {
+  font-size: 0.8rem;
+  color: var(--olive-mist);
+  font-weight: 500;
+}
+
 /* Relative time in header */
 .job-time {
   font-size: 0.8rem;
@@ -1003,10 +1010,30 @@ a:hover {
   border-radius: 24px;
   background: var(--cream);
   font-family: 'DM Sans', sans-serif;
-  font-size: 0.88rem;
+  font-size: 0.84rem;
   color: var(--walnut);
   outline: none;
   cursor: pointer;
+  transition: var(--transition);
+}
+
+.filters-form select:focus {
+  border-color: var(--camel);
+  box-shadow: 0 0 0 3px rgba(196, 173, 148, 0.15);
+}
+
+.filters-reset {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  color: var(--dried-rose);
+  font-weight: 500;
+  transition: var(--transition);
+}
+
+.filters-reset:hover {
+  color: #8b4049;
 }
 
 /* ============================================
@@ -1274,6 +1301,255 @@ a:hover {
 }
 
 /* ============================================
+   JOB DETAIL MODAL
+   ============================================ */
+
+.job-modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(61, 50, 40, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1100;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 20px;
+  overflow-y: auto;
+}
+
+.job-modal-overlay.active {
+  display: flex;
+}
+
+.job-modal {
+  background: var(--cream);
+  border: 1px solid var(--sand);
+  border-radius: var(--radius);
+  max-width: 720px;
+  width: 100%;
+  box-shadow: 0 16px 48px rgba(61, 50, 40, 0.2);
+  position: relative;
+  animation: modalSlideIn 0.3s ease;
+  margin: auto 0;
+}
+
+@keyframes modalSlideIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.job-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: var(--linen);
+  border: 1px solid var(--sand);
+  cursor: pointer;
+  font-size: 1.5rem;
+  line-height: 1;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--walnut);
+  transition: var(--transition);
+  z-index: 2;
+}
+
+.job-modal-close:hover {
+  background: var(--dried-rose);
+  color: #fff;
+  border-color: var(--dried-rose);
+}
+
+.job-modal-header {
+  padding: 28px 28px 0;
+}
+
+.job-modal-title {
+  font-size: 1.3rem;
+  color: var(--espresso);
+  padding-right: 40px;
+  margin-bottom: 8px;
+}
+
+.job-modal-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 0.92rem;
+  margin-bottom: 4px;
+}
+
+.job-modal-company {
+  font-weight: 600;
+  color: var(--walnut);
+}
+
+.job-modal-location {
+  color: var(--camel);
+}
+
+.job-modal-location:not(:empty)::before {
+  content: '\25CB ';
+  font-size: 0.5rem;
+  opacity: 0.6;
+}
+
+.job-modal-date:not(:empty) {
+  font-size: 0.85rem;
+  color: var(--olive-mist);
+  font-weight: 500;
+}
+
+.job-modal-statuses {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border-top: 1px solid var(--sand);
+  border-bottom: 1px solid var(--sand);
+  margin-top: 16px;
+}
+
+.job-modal-statuses .status-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  text-align: center;
+}
+
+.job-modal-statuses .status-item:not(:last-child) {
+  border-right: 1px solid var(--sand);
+}
+
+.job-modal-highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 16px 28px 0;
+}
+
+.job-modal-highlights:empty {
+  display: none;
+}
+
+.job-modal-description {
+  padding: 16px 28px;
+  font-size: 0.92rem;
+  line-height: 1.75;
+  color: var(--espresso);
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.job-modal-description p {
+  margin-bottom: 12px;
+}
+
+.job-modal-description p:last-child {
+  margin-bottom: 0;
+}
+
+.job-modal-description .no-desc {
+  color: var(--camel);
+  font-style: italic;
+}
+
+.job-modal-footer {
+  border-top: 1px solid var(--sand);
+  padding: 16px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* "Lire plus" link in card */
+.read-more-link {
+  color: var(--terracotta);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.read-more-link:hover {
+  text-decoration: underline;
+}
+
+/* Modal responsive */
+@media (max-width: 768px) {
+  .job-modal-overlay {
+    padding: 16px 10px;
+  }
+
+  .job-modal-header {
+    padding: 20px 20px 0;
+  }
+
+  .job-modal-title {
+    font-size: 1.1rem;
+  }
+
+  .job-modal-statuses {
+    grid-template-columns: 1fr;
+  }
+
+  .job-modal-statuses .status-item:not(:last-child) {
+    border-right: none;
+    border-bottom: 1px solid var(--sand);
+  }
+
+  .job-modal-statuses .status-item {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 8px 20px;
+  }
+
+  .job-modal-highlights {
+    padding: 12px 20px 0;
+  }
+
+  .job-modal-description {
+    padding: 12px 20px;
+  }
+
+  .job-modal-footer {
+    padding: 12px 20px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .job-modal-footer .btn-apply {
+    text-align: center;
+  }
+}
+
+/* Dark mode modal */
+[data-theme="dark"] .job-modal-overlay {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .job-modal {
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .job-modal-close {
+  background: var(--sand);
+  color: var(--espresso);
+}
+
+[data-theme="dark"] .job-modal-close:hover {
+  background: var(--dried-rose);
+  color: #fff;
+}
+
+/* ============================================
    LOADING OVERLAY + PIXEL BUG
    ============================================ */
 
@@ -1521,6 +1797,22 @@ a:hover {
   font-size: 0.88rem;
   color: var(--camel);
   font-style: italic;
+}
+
+.loading-cancel {
+  display: inline-block;
+  margin-top: 20px;
+  font-size: 0.85rem;
+  color: var(--camel);
+  text-decoration: underline;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: var(--transition);
+}
+
+.loading-cancel:hover {
+  opacity: 1;
+  color: var(--walnut);
 }
 
 /* Bug animations */

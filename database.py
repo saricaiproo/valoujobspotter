@@ -228,15 +228,32 @@ def is_duplicate(job_data):
 def is_relevant(job_data):
     """Filter out jobs that don't match the target roles."""
     title = (job_data.get('title', '') + ' ' + job_data.get('description', '')).lower()
+    job_title = job_data.get('title', '').lower()
 
-    # Must contain at least one relevant term
-    relevant_terms = [
-        'media', 'médias', 'social', 'marketing', 'communication',
-        'contenu', 'content', 'community', 'communauté', 'numerique',
-        'numérique', 'digital', 'marque', 'brand', 'coordonn',
-        'strateg', 'e-commerce', 'ecommerce', 'redact', 'rédact',
-        'web', 'seo', 'sem', 'publicite', 'publicité',
+    # Compound reject patterns — checked FIRST, override relevant terms
+    # These catch cases like "Social Worker" where "social" alone would match
+    reject_compound = [
+        'social worker', 'travailleur social', 'travailleuse sociale',
+        'service social', 'aide social', 'work social',
+        'psychologue', 'psychologist', 'therapist', 'thérapeute',
+        'educateur specialise', 'éducateur spécialisé', 'éducatrice spécialisée',
+        'intervenant', 'intervenante', 'prepose', 'préposé', 'préposée',
+        'technicien comptable', 'technical support', 'support technique',
+        'agent de securite', 'security agent', 'gardien',
+        'commis', 'caissier', 'caissière', 'cashier',
+        'receptionniste', 'réceptionniste', 'receptionist',
+        'livreur', 'delivery driver', 'warehouse', 'entrepot',
+        'manutentionnaire', 'journalier', 'manoeuvre',
+        'enseignant', 'enseignante', 'teacher', 'professeur',
+        'technicien informatique', 'it technician',
+        'analyste financier', 'financial analyst',
+        'agent immobilier', 'real estate agent',
+        'représentant des ventes', 'sales representative',
     ]
+
+    for term in reject_compound:
+        if term in job_title:
+            return False
 
     # Reject if title contains these (clearly wrong field)
     reject_terms = [
@@ -252,14 +269,31 @@ def is_relevant(job_data):
         'fullstack', 'qa tester', 'game test', 'architecte logiciel',
         'software architect', 'machine learning', 'dentist', 'dentiste',
         'pharmacien', 'pharmacist', 'vétérinaire', 'veterinaire',
+        'physiotherapeute', 'physiothérapeute', 'orthophoniste',
+        'diététiste', 'nutritionniste', 'optométriste',
+        'technicien', 'machiniste', 'opérateur', 'operateur',
+        'assembleur', 'soudeur', 'peintre industriel',
+        'agent de sécurité', 'gardien de sécurité',
     ]
 
-    job_title = job_data.get('title', '').lower()
-
-    # Check reject terms first (in title only)
+    # Check reject terms (in title only)
     for term in reject_terms:
         if term in job_title:
             return False
+
+    # Must contain at least one relevant term
+    relevant_terms = [
+        'media', 'médias', 'medias sociaux', 'médias sociaux',
+        'social media', 'réseaux sociaux', 'reseaux sociaux',
+        'marketing', 'communication', 'contenu', 'content',
+        'community manager', 'communauté', 'numerique',
+        'numérique', 'digital', 'marque', 'brand', 'coordonn',
+        'strateg', 'e-commerce', 'ecommerce', 'redact', 'rédact',
+        'seo', 'sem', 'publicite', 'publicité',
+        'gestionnaire de communaut', 'relations publiques',
+        'public relations', 'influenc', 'copywrit',
+        'creation de contenu', 'créateur de contenu', 'création de contenu',
+    ]
 
     # Check if any relevant term is present
     for term in relevant_terms:
@@ -365,7 +399,9 @@ def _build_condition_filters():
     return clauses, params
 
 
-def get_all_jobs(page=1, per_page=20, source=None, favorite_only=False, show_hidden=False, apply_conditions=True):
+def get_all_jobs(page=1, per_page=20, source=None, favorite_only=False,
+                  show_hidden=False, apply_conditions=True,
+                  work_type=None, job_type=None, sort='newest', days=None):
     conn = get_db()
     query = 'SELECT * FROM jobs WHERE TRUE'
     params = []
@@ -378,18 +414,38 @@ def get_all_jobs(page=1, per_page=20, source=None, favorite_only=False, show_hid
     if favorite_only:
         query += ' AND favorite = TRUE'
 
-    # Apply user conditions
+    # Page-level filters (filter bar on /jobs)
+    if work_type:
+        query += ' AND work_type = %s'
+        params.append(work_type)
+    if job_type:
+        query += ' AND job_type = %s'
+        params.append(job_type)
+    if days and days > 0:
+        query += " AND date_scraped >= CURRENT_TIMESTAMP - INTERVAL '%s days'"
+        params.append(days)
+
+    # Apply user conditions from settings
     if apply_conditions:
         cond_clauses, cond_params = _build_condition_filters()
         for clause in cond_clauses:
             query += ' AND ' + clause
         params.extend(cond_params)
 
-    query += ' ORDER BY date_scraped DESC LIMIT %s OFFSET %s'
+    # Sorting
+    if sort == 'oldest':
+        query += ' ORDER BY date_scraped ASC'
+    elif sort == 'salary':
+        query += ' ORDER BY salary DESC NULLS LAST, date_scraped DESC'
+    else:
+        query += ' ORDER BY date_scraped DESC'
+
+    query += ' LIMIT %s OFFSET %s'
     params.extend([per_page, (page - 1) * per_page])
 
     rows = _fetchall(conn, query, params)
 
+    # Count query (same filters, no sort/limit)
     count_query = 'SELECT COUNT(*) as total FROM jobs WHERE TRUE'
     count_params = []
     if not show_hidden:
@@ -399,6 +455,15 @@ def get_all_jobs(page=1, per_page=20, source=None, favorite_only=False, show_hid
         count_params.append(source)
     if favorite_only:
         count_query += ' AND favorite = TRUE'
+    if work_type:
+        count_query += ' AND work_type = %s'
+        count_params.append(work_type)
+    if job_type:
+        count_query += ' AND job_type = %s'
+        count_params.append(job_type)
+    if days and days > 0:
+        count_query += " AND date_scraped >= CURRENT_TIMESTAMP - INTERVAL '%s days'"
+        count_params.append(days)
 
     if apply_conditions:
         cond_clauses, cond_params = _build_condition_filters()
