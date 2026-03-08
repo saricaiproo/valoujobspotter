@@ -43,15 +43,56 @@
     <div class="section">
         <h2>Actions rapides</h2>
         <div class="actions-grid">
-            <form method="POST" action="{{ url_for('trigger_scrape') }}">
-                <button type="submit" class="btn btn-primary">Lancer une recherche maintenant</button>
-            </form>
+            <button type="button" class="btn btn-primary" id="scrape-btn" onclick="startScrape()">Lancer une recherche maintenant</button>
             <form method="POST" action="{{ url_for('trigger_email') }}">
                 <button type="submit" class="btn btn-secondary">Envoyer le digest par courriel</button>
             </form>
             <form method="POST" action="{{ url_for('test_email') }}">
                 <button type="submit" class="btn btn-secondary">Tester le courriel</button>
             </form>
+        </div>
+    </div>
+
+    <!-- Loading overlay with cute bug -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-scene">
+            <div class="bug-container" id="bug-container">
+                <!-- Pixel art ladybug -->
+                <div class="pixel-bug" id="pixel-bug">
+                    <div class="bug-body">
+                        <div class="bug-head"></div>
+                        <div class="bug-shell">
+                            <div class="bug-wing bug-wing-left"></div>
+                            <div class="bug-wing bug-wing-right"></div>
+                            <div class="bug-spot spot-1"></div>
+                            <div class="bug-spot spot-2"></div>
+                            <div class="bug-spot spot-3"></div>
+                            <div class="bug-line"></div>
+                        </div>
+                        <div class="bug-legs">
+                            <div class="leg leg-1"></div>
+                            <div class="leg leg-2"></div>
+                            <div class="leg leg-3"></div>
+                            <div class="leg leg-4"></div>
+                            <div class="leg leg-5"></div>
+                            <div class="leg leg-6"></div>
+                        </div>
+                    </div>
+                    <div class="bug-shadow"></div>
+                </div>
+                <!-- Trail dots -->
+                <div class="trail-dots">
+                    <span class="trail-dot"></span>
+                    <span class="trail-dot"></span>
+                    <span class="trail-dot"></span>
+                    <span class="trail-dot"></span>
+                    <span class="trail-dot"></span>
+                </div>
+            </div>
+            <div class="loading-text">
+                <p class="loading-message" id="loading-message">Recherche en cours...</p>
+                <p class="loading-sub">Notre petite coccinelle cherche les meilleures offres pour toi</p>
+            </div>
         </div>
     </div>
 
@@ -95,4 +136,64 @@
     </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let pollInterval = null;
+
+function startScrape() {
+    const btn = document.getElementById('scrape-btn');
+    const overlay = document.getElementById('loading-overlay');
+
+    btn.disabled = true;
+    btn.textContent = 'Recherche en cours...';
+    overlay.classList.add('active');
+
+    fetch('{{ url_for("trigger_scrape") }}', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'already_running') {
+                document.getElementById('loading-message').textContent = 'Une recherche est deja en cours...';
+            }
+            pollInterval = setInterval(checkStatus, 3000);
+        })
+        .catch(() => {
+            overlay.classList.remove('active');
+            btn.disabled = false;
+            btn.textContent = 'Lancer une recherche maintenant';
+        });
+}
+
+function checkStatus() {
+    fetch('{{ url_for("scrape_progress") }}')
+        .then(r => r.json())
+        .then(data => {
+            const msg = document.getElementById('loading-message');
+            msg.textContent = data.message || 'Recherche en cours...';
+
+            if (!data.running) {
+                clearInterval(pollInterval);
+                msg.textContent = data.message || 'Termine!';
+
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            }
+        });
+}
+
+// Make bug interactive - follow clicks
+document.addEventListener('DOMContentLoaded', () => {
+    const overlay = document.getElementById('loading-overlay');
+    const bug = document.getElementById('pixel-bug');
+
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay || e.target.closest('.loading-scene')) {
+            bug.classList.add('jump');
+            setTimeout(() => bug.classList.remove('jump'), 500);
+        }
+    });
+});
+</script>
 {% endblock %}

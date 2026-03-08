@@ -5,7 +5,7 @@ from functools import wraps
 from math import ceil
 
 import bcrypt
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 
 from config import Config
 from database import (
@@ -24,6 +24,9 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = Config.SECRET_KEY
+
+# Scrape status tracking
+scrape_status = {'running': False, 'total_new': 0, 'message': ''}
 
 # Hash the app password at startup
 _hashed_password = None
@@ -275,14 +278,37 @@ def delete_board(board_id):
     return redirect(url_for('settings'))
 
 
+def _run_scrape_with_status():
+    global scrape_status
+    scrape_status = {'running': True, 'total_new': 0, 'message': 'Recherche en cours...'}
+    try:
+        total = run_all_scrapers(max_keywords=5)
+        stats = get_job_stats()
+        scrape_status = {
+            'running': False,
+            'total_new': total,
+            'message': f'{total} nouvelle(s) offre(s) trouvee(s)! {stats["total"]} au total.',
+        }
+    except Exception as e:
+        logger.error(f"Erreur scraping: {e}", exc_info=True)
+        scrape_status = {'running': False, 'total_new': 0, 'message': f'Erreur: {e}'}
+
+
 @app.route('/scrape', methods=['POST'])
 @login_required
 def trigger_scrape():
-    flash('Recherche lancee en arriere-plan! Rafraichis la page dans 2-3 minutes.', 'info')
-    thread = threading.Thread(target=run_all_scrapers, kwargs={'max_keywords': 5})
+    if scrape_status.get('running'):
+        return jsonify({'status': 'already_running'})
+    thread = threading.Thread(target=_run_scrape_with_status)
     thread.daemon = True
     thread.start()
-    return redirect(url_for('dashboard'))
+    return jsonify({'status': 'started'})
+
+
+@app.route('/scrape-status')
+@login_required
+def scrape_progress():
+    return jsonify(scrape_status)
 
 
 @app.route('/debug-scrape')
