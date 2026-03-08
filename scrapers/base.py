@@ -35,7 +35,9 @@ class BaseScraper:
     def _get_soup(self, url):
         try:
             self._delay()
+            logger.info(f"[{self.SOURCE_NAME}] GET {url}")
             response = self.session.get(url, timeout=30)
+            logger.info(f"[{self.SOURCE_NAME}] Status: {response.status_code}, Taille: {len(response.text)} chars")
             response.raise_for_status()
             return BeautifulSoup(response.text, 'lxml')
         except requests.RequestException as e:

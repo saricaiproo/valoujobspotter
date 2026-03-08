@@ -278,10 +278,13 @@ def delete_board(board_id):
 @app.route('/scrape', methods=['POST'])
 @login_required
 def trigger_scrape():
-    flash('Recherche lancee en arriere-plan! Les resultats apparaitront sous peu.', 'info')
-    thread = threading.Thread(target=run_all_scrapers)
-    thread.daemon = True
-    thread.start()
+    try:
+        run_all_scrapers()
+        stats = get_job_stats()
+        flash(f'Recherche terminee! {stats["today"]} offre(s) trouvee(s) aujourd\'hui, {stats["total"]} au total.', 'success')
+    except Exception as e:
+        logger.error(f"Erreur scraping: {e}", exc_info=True)
+        flash(f'Erreur lors de la recherche: {e}', 'error')
     return redirect(url_for('dashboard'))
 
 
