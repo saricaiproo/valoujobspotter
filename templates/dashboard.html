@@ -53,8 +53,8 @@
             <form method="POST" action="{{ url_for('cleanup_db') }}">
                 <button type="submit" class="btn btn-secondary">Nettoyer les données</button>
             </form>
-            <form method="POST" action="{{ url_for('reset_and_rescrape') }}">
-                <button type="submit" class="btn btn-danger" onclick="return confirm('Supprimer toutes les offres et relancer une recherche complète?')">Tout effacer et rescanner</button>
+            <form id="reset-form" method="POST" action="{{ url_for('reset_and_rescrape') }}">
+                <button type="submit" class="btn btn-danger">Tout effacer et rescanner</button>
             </form>
         </div>
     </div>
@@ -195,8 +195,34 @@ function cancelLoading() {
     stopLoading('Annulé. Rechargement...');
 }
 
-// Make bug interactive
+// Handle "Tout effacer et rescanner" via JS
 document.addEventListener('DOMContentLoaded', () => {
+    const resetForm = document.getElementById('reset-form');
+    if (resetForm) {
+        resetForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (!confirm('Supprimer toutes les offres et relancer une recherche complète?')) return;
+
+            const overlay = document.getElementById('loading-overlay');
+            const msg = document.getElementById('loading-message');
+            if (msg) msg.textContent = 'Suppression et relancement...';
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            pollCount = 0;
+
+            fetch(resetForm.action, { method: 'POST', credentials: 'same-origin' })
+                .then(r => r.json())
+                .then(() => {
+                    if (msg) msg.textContent = 'Recherche en cours...';
+                    pollInterval = setInterval(checkStatus, 3000);
+                })
+                .catch(() => {
+                    stopLoading('Recherche lancée! Rechargement...');
+                });
+        });
+    }
+
+    // Make bug interactive
     const overlay = document.getElementById('loading-overlay');
     const bug = document.getElementById('pixel-bug');
     if (overlay && bug) {

@@ -132,8 +132,21 @@ def job_modal_data_filter(job):
     escaped = html_mod.escape(raw_json, quote=True).replace("'", "&#39;")
     return Markup(escaped)
 
-# Scrape status tracking
-scrape_status = {'running': False, 'total_new': 0, 'message': '', 'started_at': None}
+# Scrape status — stored in DB settings for multi-worker support
+def _get_scrape_status():
+    """Read scrape status from DB (shared across workers)."""
+    raw = get_setting('scrape_status', '')
+    if raw:
+        try:
+            return json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return {'running': False, 'total_new': 0, 'message': ''}
+
+
+def _set_scrape_status(status):
+    """Write scrape status to DB (shared across workers)."""
+    set_setting('scrape_status', json.dumps(status, default=str))
 
 # Hash the app password at startup
 _hashed_password = None
@@ -398,27 +411,42 @@ def delete_board(board_id):
 
 
 def _run_scrape_with_status():
-    global scrape_status
-    scrape_status = {'running': True, 'total_new': 0, 'message': 'Recherche en cours...', 'started_at': datetime.now(timezone.utc)}
+    _set_scrape_status({
+        'running': True, 'total_new': 0,
+        'message': 'Recherche en cours...',
+        'started_at': datetime.now(timezone.utc).isoformat(),
+    })
     try:
         total = run_all_scrapers(max_keywords=3)
         stats = get_job_stats()
-        scrape_status = {
+        _set_scrape_status({
             'running': False,
             'total_new': total,
             'message': f'{total} nouvelle(s) offre(s) trouvée(s)! {stats["total"]} au total.',
-            'started_at': None,
-        }
+        })
     except Exception as e:
         logger.error(f"Erreur scraping: {e}", exc_info=True)
-        scrape_status = {'running': False, 'total_new': 0, 'message': f'Erreur: {e}', 'started_at': None}
+        _set_scrape_status({'running': False, 'total_new': 0, 'message': f'Erreur: {e}'})
 
 
 @app.route('/scrape', methods=['POST'])
 @login_required
 def trigger_scrape():
-    if scrape_status.get('running'):
-        return jsonify({'status': 'already_running'})
+    status = _get_scrape_status()
+    if status.get('running'):
+        # Safety: check if it's been stuck for over 5 minutes
+        started = status.get('started_at')
+        if started:
+            try:
+                started_dt = datetime.fromisoformat(started)
+                if (datetime.now(timezone.utc) - started_dt).total_seconds() > 300:
+                    pass  # Allow restart — it's stuck
+                else:
+                    return jsonify({'status': 'already_running'})
+            except (ValueError, TypeError):
+                pass
+        else:
+            return jsonify({'status': 'already_running'})
     thread = threading.Thread(target=_run_scrape_with_status)
     thread.daemon = True
     thread.start()
@@ -428,13 +456,18 @@ def trigger_scrape():
 @app.route('/scrape-status')
 @login_required
 def scrape_progress():
-    # Safety: if scrape has been "running" for over 4 minutes, consider it done
-    status = dict(scrape_status)
+    status = _get_scrape_status()
+    # Safety: if scrape has been "running" for over 5 minutes, consider it done
     if status.get('running') and status.get('started_at'):
-        elapsed = (datetime.now(timezone.utc) - status['started_at']).total_seconds()
-        if elapsed > 240:
-            status['running'] = False
-            status['message'] = 'Recherche terminée! (délai max atteint)'
+        try:
+            started_dt = datetime.fromisoformat(status['started_at'])
+            elapsed = (datetime.now(timezone.utc) - started_dt).total_seconds()
+            if elapsed > 300:
+                status['running'] = False
+                status['message'] = 'Recherche terminée!'
+                _set_scrape_status(status)
+        except (ValueError, TypeError):
+            pass
     status.pop('started_at', None)
     return jsonify(status)
 
@@ -495,12 +528,13 @@ def reset_and_rescrape():
     flash('Toutes les offres supprimées (sauf favoris). Lancement d\'une nouvelle recherche...', 'info')
 
     # Trigger scrape in background
-    if not scrape_status.get('running'):
+    status = _get_scrape_status()
+    if not status.get('running'):
         thread = threading.Thread(target=_run_scrape_with_status)
         thread.daemon = True
         thread.start()
 
-    return redirect(url_for('dashboard'))
+    return jsonify({'status': 'started'})
 
 
 @app.route('/send-email', methods=['POST'])
