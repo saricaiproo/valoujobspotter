@@ -278,14 +278,58 @@ def delete_board(board_id):
 @app.route('/scrape', methods=['POST'])
 @login_required
 def trigger_scrape():
-    try:
-        run_all_scrapers(max_keywords=5)
-        stats = get_job_stats()
-        flash(f'Recherche terminee! {stats["today"]} offre(s) trouvee(s) aujourd\'hui, {stats["total"]} au total.', 'success')
-    except Exception as e:
-        logger.error(f"Erreur scraping: {e}", exc_info=True)
-        flash(f'Erreur lors de la recherche: {e}', 'error')
+    flash('Recherche lancee en arriere-plan! Rafraichis la page dans 2-3 minutes.', 'info')
+    thread = threading.Thread(target=run_all_scrapers, kwargs={'max_keywords': 5})
+    thread.daemon = True
+    thread.start()
     return redirect(url_for('dashboard'))
+
+
+@app.route('/debug-scrape')
+@login_required
+def debug_scrape():
+    """Temporary debug route to see actual HTML structure of job sites."""
+    import requests
+    from bs4 import BeautifulSoup
+    results = {}
+
+    sites = {
+        'Jobillico': 'https://www.jobillico.com/recherche-emploi?skwd=social+media+manager&sloc=Montreal',
+        'Jobboom': 'https://www.jobboom.com/fr/recherche?keywords=social+media+manager&location=Montreal',
+        'Indeed RSS': 'https://ca.indeed.com/rss?q=social+media+manager&l=Montreal',
+        'LinkedIn': 'https://www.linkedin.com/jobs/search/?keywords=social+media+manager&location=Montreal',
+    }
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'fr-CA,fr;q=0.9,en;q=0.7',
+    }
+
+    for name, url in sites.items():
+        try:
+            resp = requests.get(url, headers=headers, timeout=15)
+            soup = BeautifulSoup(resp.text, 'lxml')
+
+            # Log all tags with class attributes to find job card patterns
+            all_classes = set()
+            for tag in soup.find_all(True, class_=True):
+                for cls in tag.get('class', []):
+                    if any(kw in cls.lower() for kw in ['job', 'offer', 'result', 'card', 'listing', 'item', 'emploi', 'offre', 'poste']):
+                        all_classes.add(f"{tag.name}.{cls}")
+
+            # Get first 500 chars of interesting elements
+            sample = ', '.join(sorted(all_classes)[:30])
+            results[name] = {
+                'status': resp.status_code,
+                'size': len(resp.text),
+                'job_classes': sample or 'Aucune classe trouvee',
+            }
+            logger.info(f"[DEBUG] {name} ({resp.status_code}): Classes trouvees: {sample}")
+        except Exception as e:
+            results[name] = {'status': 'error', 'error': str(e)}
+            logger.error(f"[DEBUG] {name}: {e}")
+
+    return f'<pre>{json.dumps(results, indent=2, ensure_ascii=False)}</pre>'
 
 
 @app.route('/send-email', methods=['POST'])
