@@ -99,44 +99,14 @@
         </div>
     </div>
 
+    {% from "macros/job_card.html" import render_job_card %}
     {% if recent_jobs %}
     <div class="section">
         <h2>Offres recentes</h2>
         {% for job in recent_jobs %}
-        <div class="job-card">
-            <div class="job-card-header">
-                <h3><a href="{{ job.url }}" target="_blank">{{ job.title }}</a></h3>
-                <div class="job-actions">
-                    <form method="POST" action="{{ url_for('toggle_fav', job_id=job.id) }}" class="inline-form">
-                        <button type="submit" class="btn-icon {% if job.favorite %}active{% endif %}" title="Favori">
-                            {% if job.favorite %}&#9733;{% else %}&#9734;{% endif %}
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ url_for('toggle_hide', job_id=job.id) }}" class="inline-form">
-                        <button type="submit" class="btn-icon" title="Masquer">&#10005;</button>
-                    </form>
-                </div>
-            </div>
-            <div class="job-meta">
-                <strong class="company">{{ job.company or 'Non specifie' }}</strong>
-                <span class="location">{{ job.location or '' }}</span>
-            </div>
-            <div class="job-badges">
-                <span class="badge badge-source">{{ job.source }}</span>
-                {% if job.work_type %}
-                <span class="badge">{{ job.work_type|replace('teletravail', 'Teletravail')|replace('hybride', 'Hybride')|replace('presentiel', 'Presentiel') }}</span>
-                {% endif %}
-                {% if job.salary %}
-                <span class="badge badge-salary">{{ job.salary }}</span>
-                {% endif %}
-            </div>
-            {% if job.description %}
-            <p class="job-desc">{{ job.description[:200] }}{% if job.description|length > 200 %}...{% endif %}</p>
-            {% endif %}
-            <div class="job-date">Trouve le {{ job.date_scraped.strftime('%Y-%m-%d') if job.date_scraped else '' }}</div>
-        </div>
+            {{ render_job_card(job) }}
         {% endfor %}
-        <a href="{{ url_for('jobs_list') }}" class="btn btn-secondary">Voir toutes les offres</a>
+        <a href="{{ url_for('jobs_list') }}" class="btn btn-secondary" style="margin-top: 12px;">Voir toutes les offres</a>
     </div>
     {% endif %}
 </div>

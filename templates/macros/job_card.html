@@ -1,0 +1,59 @@
+{% macro render_job_card(job, show_hide=True) %}
+<div class="job-card {% if job.work_type == 'teletravail' %}job-card--remote{% elif job.work_type == 'hybride' %}job-card--hybrid{% endif %}">
+    <div class="job-card-top">
+        <div class="job-card-header">
+            <h3 class="job-title"><a href="{{ job.url }}" target="_blank" rel="noopener">{{ job.title }}</a></h3>
+            <div class="job-actions">
+                <form method="POST" action="{{ url_for('toggle_fav', job_id=job.id) }}" class="inline-form">
+                    <button type="submit" class="btn-icon {% if job.favorite %}active{% endif %}" title="Favori">
+                        {% if job.favorite %}&#9733;{% else %}&#9734;{% endif %}
+                    </button>
+                </form>
+                {% if show_hide %}
+                <form method="POST" action="{{ url_for('toggle_hide', job_id=job.id) }}" class="inline-form">
+                    <button type="submit" class="btn-icon btn-icon-hide" title="Masquer">&#10005;</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="job-info-row">
+            {% if job.company %}
+            <span class="job-company">{{ job.company }}</span>
+            {% endif %}
+            {% if job.location %}
+            <span class="job-location">{{ job.location }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="job-tags">
+        {% if job.work_type == 'teletravail' %}
+        <span class="tag tag-remote">Teletravail</span>
+        {% elif job.work_type == 'hybride' %}
+        <span class="tag tag-hybrid">Hybride</span>
+        {% elif job.work_type == 'presentiel' %}
+        <span class="tag tag-onsite">Presentiel</span>
+        {% endif %}
+
+        {% if job.salary %}
+        <span class="tag tag-salary">{{ job.salary }}</span>
+        {% endif %}
+
+        <span class="tag tag-source">{{ job.source }}</span>
+
+        {% if job.job_type %}
+        <span class="tag tag-type">{{ job.job_type }}</span>
+        {% endif %}
+    </div>
+
+    {% if job.description %}
+    <p class="job-desc">{{ job.description[:300] }}{% if job.description|length > 300 %}...{% endif %}</p>
+    {% endif %}
+
+    <div class="job-card-footer">
+        <span class="job-date">{{ job.date_scraped.strftime('%d %b %Y') if job.date_scraped else '' }}</span>
+        <a href="{{ job.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-apply">Voir l'offre &rarr;</a>
+    </div>
+</div>
+{% endmacro %}
