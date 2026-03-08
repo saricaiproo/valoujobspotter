@@ -339,7 +339,7 @@ def cleanup_db():
     _execute(conn, "DELETE FROM jobs WHERE url LIKE '%/voir-entreprise/%'")
     _execute(conn, "DELETE FROM jobs WHERE company = 'Ajouter aux favoris'")
     conn.close()
-    flash('Donnees nettoyees! Les mauvaises entrees Jobillico ont ete supprimees.', 'success')
+    flash('Donnees nettoyees avec succes!', 'success')
     return redirect(url_for('dashboard'))
 
 

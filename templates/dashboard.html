@@ -146,6 +146,20 @@
 <script>
 let pollInterval = null;
 
+function stopLoading(message) {
+    clearInterval(pollInterval);
+    const overlay = document.getElementById('loading-overlay');
+    const btn = document.getElementById('scrape-btn');
+    const msg = document.getElementById('loading-message');
+    msg.textContent = message || 'Termine!';
+    setTimeout(() => {
+        overlay.classList.remove('active');
+        btn.disabled = false;
+        btn.textContent = 'Lancer une recherche maintenant';
+        window.location.reload();
+    }, 1500);
+}
+
 function startScrape() {
     const btn = document.getElementById('scrape-btn');
     const overlay = document.getElementById('loading-overlay');
@@ -154,8 +168,13 @@ function startScrape() {
     btn.textContent = 'Recherche en cours...';
     overlay.classList.add('active');
 
-    fetch('{{ url_for("trigger_scrape") }}', { method: 'POST' })
-        .then(r => r.json())
+    fetch('{{ url_for("trigger_scrape") }}', { method: 'POST', credentials: 'same-origin' })
+        .then(r => {
+            if (!r.ok || !r.headers.get('content-type')?.includes('json')) {
+                throw new Error('Bad response');
+            }
+            return r.json();
+        })
         .then(data => {
             if (data.status === 'already_running') {
                 document.getElementById('loading-message').textContent = 'Une recherche est deja en cours...';
@@ -170,20 +189,23 @@ function startScrape() {
 }
 
 function checkStatus() {
-    fetch('{{ url_for("scrape_progress") }}')
-        .then(r => r.json())
+    fetch('{{ url_for("scrape_progress") }}', { credentials: 'same-origin' })
+        .then(r => {
+            if (!r.ok || !r.headers.get('content-type')?.includes('json')) {
+                throw new Error('Bad response');
+            }
+            return r.json();
+        })
         .then(data => {
             const msg = document.getElementById('loading-message');
             msg.textContent = data.message || 'Recherche en cours...';
 
             if (!data.running) {
-                clearInterval(pollInterval);
-                msg.textContent = data.message || 'Termine!';
-
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
+                stopLoading(data.message);
             }
+        })
+        .catch(() => {
+            stopLoading('Recherche terminee!');
         });
 }
 
