@@ -107,6 +107,26 @@ class JobillicoScraper(BaseScraper):
                     if type_p:
                         job_type = type_p.get_text(strip=True)
 
+                # Date posted — look for time element or date icon
+                date_posted = ''
+                date_el = card.select_one('time')
+                if date_el:
+                    date_posted = date_el.get('datetime', '') or date_el.get_text(strip=True)
+                if not date_posted:
+                    # Look for calendar/date icon sibling
+                    cal_icon = card.select_one('span.icon--information--calendar, span[class*="date"], span[class*="calendar"]')
+                    if cal_icon:
+                        date_p = cal_icon.find_next_sibling('p') or cal_icon.find_next_sibling('span')
+                        if date_p:
+                            date_posted = date_p.get_text(strip=True)
+                if not date_posted:
+                    # Try to find relative date text like "Il y a 2 jours"
+                    for el in card.select('span, p, small'):
+                        text = el.get_text(strip=True).lower()
+                        if 'il y a' in text or 'aujourd' in text or 'hier' in text:
+                            date_posted = el.get_text(strip=True)
+                            break
+
                 # Get ALL card text for better detection
                 card_text = card.get_text(' ', strip=True)
 
@@ -126,6 +146,7 @@ class JobillicoScraper(BaseScraper):
                     'salary': salary,
                     'work_type': work_type,
                     'job_type': job_type,
+                    'date_posted': date_posted,
                     'description': '',
                 })
             except Exception as e:
@@ -155,5 +176,19 @@ class JobillicoScraper(BaseScraper):
             job['job_type'] = self.detect_job_type(page_text)
         if not job.get('work_type'):
             job['work_type'] = self._detect_work_type(page_text)
+
+        # Date posted from detail page
+        if not job.get('date_posted'):
+            date_el = soup.select_one('time')
+            if date_el:
+                job['date_posted'] = date_el.get('datetime', '') or date_el.get_text(strip=True)
+            if not job.get('date_posted'):
+                # Look for date patterns in page text
+                date_match = re.search(
+                    r'(?:publi[ée]e?\s*(?:le\s*)?|date\s*[:]\s*)(\d{1,2}\s+\w+\s+\d{4}|\d{4}-\d{2}-\d{2})',
+                    page_text, re.IGNORECASE
+                )
+                if date_match:
+                    job['date_posted'] = date_match.group(1)
 
         return job

@@ -324,18 +324,54 @@ def _parse_date_posted(date_str):
     """Try to parse date_posted text into a datetime for proper sorting."""
     if not date_str:
         return None
+    from datetime import datetime, timedelta
     s = str(date_str).strip()
+
+    # Handle relative dates like "Il y a 3 jours", "Aujourd'hui", "Hier"
+    s_lower = s.lower()
+    if "aujourd" in s_lower:
+        return datetime.now()
+    if s_lower == 'hier' or 'yesterday' in s_lower:
+        return datetime.now() - timedelta(days=1)
+    # "Il y a X jours/heures/minutes"
+    rel_match = re.search(r'il y a\s+(\d+)\s*(jour|heure|minute|semaine|mois)', s_lower)
+    if rel_match:
+        num = int(rel_match.group(1))
+        unit = rel_match.group(2)
+        if 'jour' in unit:
+            return datetime.now() - timedelta(days=num)
+        elif 'heure' in unit:
+            return datetime.now() - timedelta(hours=num)
+        elif 'minute' in unit:
+            return datetime.now() - timedelta(minutes=num)
+        elif 'semaine' in unit:
+            return datetime.now() - timedelta(weeks=num)
+        elif 'mois' in unit:
+            return datetime.now() - timedelta(days=num * 30)
+    # English relative: "3 days ago"
+    rel_match_en = re.search(r'(\d+)\s*(day|hour|minute|week|month)s?\s*ago', s_lower)
+    if rel_match_en:
+        num = int(rel_match_en.group(1))
+        unit = rel_match_en.group(2)
+        if 'day' in unit:
+            return datetime.now() - timedelta(days=num)
+        elif 'hour' in unit:
+            return datetime.now() - timedelta(hours=num)
+        elif 'week' in unit:
+            return datetime.now() - timedelta(weeks=num)
+        elif 'month' in unit:
+            return datetime.now() - timedelta(days=num * 30)
+
+    # ISO and standard date formats
     for fmt in ('%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%dT%H:%M:%S',
                 '%Y-%m-%dT%H:%M:%S.%f', '%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y'):
         try:
-            from datetime import datetime
             return datetime.strptime(s[:26], fmt)
         except (ValueError, IndexError):
             continue
     # Try just the date part if there's a T
     if 'T' in s:
         try:
-            from datetime import datetime
             return datetime.strptime(s[:10], '%Y-%m-%d')
         except (ValueError, IndexError):
             pass
