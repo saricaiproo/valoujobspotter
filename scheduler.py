@@ -2,7 +2,7 @@ import logging
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 import pytz
-from database import get_active_keywords, insert_job, get_setting
+from database import get_active_keywords, insert_job, get_setting, is_duplicate
 from scrapers import ALL_SCRAPERS
 from scrapers.base import extract_highlights
 from email_service import send_daily_digest
@@ -11,8 +11,9 @@ logger = logging.getLogger(__name__)
 
 scheduler = BackgroundScheduler(timezone=pytz.timezone('America/Toronto'))
 
-# Max detail pages to fetch per scraper (to avoid timeout)
-MAX_DETAIL_PAGES = 8
+# Max detail pages to fetch per scraper per keyword
+# With 1-2s delay each, 15 pages = ~30s extra per source = manageable
+MAX_DETAIL_PER_SOURCE = 15
 
 
 def run_all_scrapers(max_keywords=None):
@@ -32,18 +33,31 @@ def run_all_scrapers(max_keywords=None):
             logger.info(f"--- Demarrage {ScraperClass.SOURCE_NAME} ---")
             scraper = ScraperClass()
             jobs = scraper.scrape(keywords)
+            logger.info(f"[{ScraperClass.SOURCE_NAME}] {len(jobs)} offres trouvees au total")
 
-            # Enrich jobs with detail pages (for scrapers that support it)
+            # First pass: filter out duplicates to avoid wasting time enriching them
+            new_jobs = []
+            for job in jobs:
+                if not is_duplicate(job):
+                    new_jobs.append(job)
+
+            logger.info(f"[{ScraperClass.SOURCE_NAME}] {len(new_jobs)} nouvelles (non-doublons)")
+
+            # Second pass: enrich new jobs with detail pages
             enriched = 0
             new_for_source = 0
-            for job in jobs:
-                # Enrich if missing key info and we haven't hit the limit
-                if (enriched < MAX_DETAIL_PAGES
+            for job in new_jobs:
+                # Enrich if scraper supports it and we haven't hit the limit
+                if (enriched < MAX_DETAIL_PER_SOURCE
                         and hasattr(scraper, 'enrich_job')
                         and _needs_enrichment(job)):
                     try:
                         job = scraper.enrich_job(job)
                         enriched += 1
+                        logger.info(f"  Enrichi: {job.get('title', '')[:50]} | "
+                                    f"mode={job.get('work_type', '?')} "
+                                    f"type={job.get('job_type', '?')} "
+                                    f"sal={bool(job.get('salary'))}")
                     except Exception as e:
                         logger.debug(f"Enrichissement echoue: {e}")
 
@@ -52,7 +66,6 @@ def run_all_scrapers(max_keywords=None):
                     text = ' '.join(filter(None, [
                         job.get('title', ''),
                         job.get('description', ''),
-                        job.get('company', ''),
                     ]))
                     if text.strip():
                         job['highlights'] = extract_highlights(text)
@@ -61,7 +74,7 @@ def run_all_scrapers(max_keywords=None):
                     new_for_source += 1
                     total_new += 1
 
-            logger.info(f"--- {ScraperClass.SOURCE_NAME}: {new_for_source} nouvelles, {enriched} enrichies ---")
+            logger.info(f"--- {ScraperClass.SOURCE_NAME}: {new_for_source} ajoutees, {enriched} enrichies ---")
         except Exception as e:
             logger.error(f"Erreur scraper {ScraperClass.SOURCE_NAME}: {e}", exc_info=True)
             continue
@@ -72,7 +85,6 @@ def run_all_scrapers(max_keywords=None):
 
 def _needs_enrichment(job):
     """Check if job is missing key info that detail page could fill."""
-    # Enrich if missing ANY of the 3 key statuses or description
     if not job.get('description'):
         return True
     if not job.get('work_type'):

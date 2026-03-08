@@ -332,7 +332,7 @@ def _run_scrape_with_status():
     global scrape_status
     scrape_status = {'running': True, 'total_new': 0, 'message': 'Recherche en cours...'}
     try:
-        total = run_all_scrapers(max_keywords=5)
+        total = run_all_scrapers(max_keywords=3)
         stats = get_job_stats()
         scrape_status = {
             'running': False,
@@ -404,6 +404,24 @@ def cleanup_db():
 
     conn.close()
     flash(f'Donnees nettoyees! {removed} offre(s) non pertinente(s) supprimee(s).', 'success')
+    return redirect(url_for('dashboard'))
+
+
+@app.route('/reset-rescrape', methods=['POST'])
+@login_required
+def reset_and_rescrape():
+    """Delete all jobs and trigger a fresh scrape with enrichment."""
+    conn = get_db()
+    _execute(conn, 'DELETE FROM jobs WHERE favorite = FALSE')
+    conn.close()
+    flash('Toutes les offres supprimees (sauf favoris). Lancement d\'une nouvelle recherche...', 'info')
+
+    # Trigger scrape in background
+    if not scrape_status.get('running'):
+        thread = threading.Thread(target=_run_scrape_with_status)
+        thread.daemon = True
+        thread.start()
+
     return redirect(url_for('dashboard'))
 
 

@@ -228,38 +228,53 @@ class BaseScraper:
             return job
 
         try:
-            soup = self._get_soup(url)
-            if soup is None:
+            # Shorter delay for detail pages (same domain, already visited)
+            time.sleep(random.uniform(1, 2))
+            logger.info(f"[{self.SOURCE_NAME}] Enrichissement: {url[:80]}")
+            response = self.session.get(url, timeout=20)
+            if response.status_code != 200:
+                logger.debug(f"[{self.SOURCE_NAME}] Detail page {response.status_code}")
                 return job
 
-            # Let subclass extract specific fields
+            soup = BeautifulSoup(response.text, 'lxml')
+
+            # Let subclass extract specific fields first
             job = self.parse_detail(soup, job)
 
-            # Extract full page text for skill detection
+            # Extract full page text for detection
             page_text = soup.get_text(' ', strip=True)
+            page_text_clean = re.sub(r'\s+', ' ', page_text)
 
-            # If description is still empty, try to get it from the page
+            # If description is still empty, try generic containers
             if not job.get('description'):
-                # Look for common description containers
-                desc_el = soup.select_one(
-                    'div.description, div.job-description, section.description, '
-                    'div[class*="description"], div[class*="content"], article'
-                )
-                if desc_el:
-                    desc_text = desc_el.get_text(' ', strip=True)
-                    # Clean up
-                    desc_text = re.sub(r'\s+', ' ', desc_text)
-                    job['description'] = desc_text[:800]
+                for selector in [
+                    'div.description__text', 'div.show-more-less-html__markup',
+                    'div.job-description', 'section.description',
+                    'div[class*="description"]', 'article',
+                    'div[class*="content"]', 'main',
+                ]:
+                    desc_el = soup.select_one(selector)
+                    if desc_el:
+                        desc = desc_el.get_text(' ', strip=True)
+                        desc = re.sub(r'\s+', ' ', desc)
+                        if len(desc) > 50:  # skip tiny matches
+                            job['description'] = desc[:800]
+                            break
 
-            # Extract highlights from description + full page
-            full_text = (job.get('description', '') + ' ' + page_text)
-            job['highlights'] = extract_highlights(full_text)
-
-            # Try to fill missing fields from detail page
+            # Fill missing fields from full page text
             if not job.get('work_type'):
-                job['work_type'] = self._detect_work_type(page_text)
+                job['work_type'] = self._detect_work_type(page_text_clean)
             if not job.get('job_type'):
-                job['job_type'] = self.normalize_job_type(page_text[:500])
+                job['job_type'] = self.detect_job_type(page_text_clean)
+            if not job.get('salary'):
+                job['salary'] = self.detect_salary(page_text_clean)
+
+            # Extract highlights from everything
+            full_text = ' '.join(filter(None, [
+                job.get('description', ''),
+                page_text_clean[:2000],
+            ]))
+            job['highlights'] = extract_highlights(full_text)
 
         except Exception as e:
             logger.debug(f"[{self.SOURCE_NAME}] Erreur enrichissement {url}: {e}")

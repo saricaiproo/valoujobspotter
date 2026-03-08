@@ -53,6 +53,9 @@
             <form method="POST" action="{{ url_for('cleanup_db') }}">
                 <button type="submit" class="btn btn-secondary">Nettoyer les donnees</button>
             </form>
+            <form method="POST" action="{{ url_for('reset_and_rescrape') }}">
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Supprimer toutes les offres et relancer une recherche complete?')">Tout effacer et rescanner</button>
+            </form>
         </div>
     </div>
 
