@@ -1,67 +1,13 @@
 import logging
-from urllib.parse import quote_plus
-from scrapers.base import BaseScraper
+import requests
+from config import Config
 
 logger = logging.getLogger(__name__)
 
 
-class AdzunaScraper(BaseScraper):
-    """
-    Adzuna free job search - scrapes public search results.
-    More scraper-friendly than Indeed/LinkedIn.
-    """
+class AdzunaScraper:
+    """Adzuna job search via their official API (Canada)."""
     SOURCE_NAME = 'Adzuna'
-    BASE_URL = 'https://www.adzuna.ca'
-
-    def build_search_url(self, keyword, location='Montreal'):
-        kw = quote_plus(keyword)
-        return f"{self.BASE_URL}/search?q={kw}&loc=Quebec&loc1=Montreal"
-
-    def parse_listing(self, soup):
-        jobs = []
-        cards = soup.select('div.result, article.result, div[data-aid]')
-
-        for card in cards:
-            try:
-                title_el = card.select_one('h2 a, a.result__title, h2.result__title a')
-                if not title_el:
-                    continue
-
-                title = title_el.get_text(strip=True)
-                link = title_el.get('href', '')
-                if link and not link.startswith('http'):
-                    link = self.BASE_URL + link
-                if not link:
-                    continue
-
-                company_el = card.select_one('div.result__company, span.result__company, a[data-company]')
-                company = company_el.get_text(strip=True) if company_el else ''
-
-                location_el = card.select_one('span.result__location, div.result__location')
-                location = location_el.get_text(strip=True) if location_el else ''
-
-                salary_el = card.select_one('span.result__salary, div.result__salary')
-                salary = salary_el.get_text(strip=True) if salary_el else ''
-
-                desc_el = card.select_one('p.result__snippet, span.result__snippet, div.result__snippet')
-                description = desc_el.get_text(strip=True) if desc_el else ''
-
-                work_type = self._detect_work_type(title + ' ' + description + ' ' + location)
-
-                jobs.append({
-                    'title': title,
-                    'company': company,
-                    'location': location,
-                    'url': link,
-                    'salary': salary,
-                    'work_type': work_type,
-                    'description': description[:500],
-                })
-            except Exception as e:
-                logger.debug(f"[Adzuna] Erreur parsing carte: {e}")
-                continue
-
-        return jobs
 
     def _detect_work_type(self, text):
         text_lower = text.lower()
@@ -72,3 +18,88 @@ class AdzunaScraper(BaseScraper):
         elif 'présentiel' in text_lower or 'sur place' in text_lower or 'on-site' in text_lower:
             return 'presentiel'
         return ''
+
+    def scrape(self, keywords, location='Montreal'):
+        app_id = Config.ADZUNA_APP_ID
+        app_key = Config.ADZUNA_APP_KEY
+        if not app_id or not app_key:
+            logger.warning("[Adzuna] API credentials missing (ADZUNA_APP_ID / ADZUNA_APP_KEY)")
+            return []
+
+        all_jobs = []
+        for keyword in keywords:
+            try:
+                logger.info(f"[Adzuna] Recherche API: {keyword} @ {location}")
+                url = (
+                    f"https://api.adzuna.com/v1/api/jobs/ca/search/1"
+                    f"?app_id={app_id}&app_key={app_key}"
+                    f"&results_per_page=25"
+                    f"&what={requests.utils.quote(keyword)}"
+                    f"&where={requests.utils.quote(location)}"
+                    f"&content-type=application/json"
+                )
+
+                response = requests.get(url, timeout=15)
+                logger.info(f"[Adzuna] Status: {response.status_code}")
+                if response.status_code != 200:
+                    logger.error(f"[Adzuna] Erreur API: {response.status_code} - {response.text[:200]}")
+                    continue
+
+                data = response.json()
+                results = data.get('results', [])
+                logger.info(f"[Adzuna] {len(results)} resultats pour '{keyword}'")
+
+                for item in results:
+                    title = item.get('title', '').strip()
+                    if not title:
+                        continue
+
+                    redirect_url = item.get('redirect_url', '')
+                    if not redirect_url:
+                        continue
+
+                    company_obj = item.get('company', {})
+                    company = company_obj.get('display_name', '') if isinstance(company_obj, dict) else ''
+
+                    location_obj = item.get('location', {})
+                    loc = location_obj.get('display_name', '') if isinstance(location_obj, dict) else ''
+
+                    description = item.get('description', '')
+
+                    # Salary
+                    salary = ''
+                    salary_min = item.get('salary_min')
+                    salary_max = item.get('salary_max')
+                    if salary_min and salary_max:
+                        salary = f"${int(salary_min):,} - ${int(salary_max):,}"
+                    elif salary_min:
+                        salary = f"${int(salary_min):,}+"
+                    elif salary_max:
+                        salary = f"Jusqu'a ${int(salary_max):,}"
+
+                    work_type = self._detect_work_type(
+                        title + ' ' + description + ' ' + loc
+                    )
+
+                    contract_type = item.get('contract_type', '')
+                    contract_time = item.get('contract_time', '')
+                    job_type = ' '.join(filter(None, [contract_time, contract_type]))
+
+                    all_jobs.append({
+                        'title': title,
+                        'company': company,
+                        'location': loc,
+                        'url': redirect_url,
+                        'salary': salary,
+                        'work_type': work_type,
+                        'job_type': job_type,
+                        'description': description[:500] if description else '',
+                        'source': self.SOURCE_NAME,
+                        'date_posted': item.get('created', ''),
+                    })
+
+            except Exception as e:
+                logger.error(f"[Adzuna] Erreur '{keyword}': {e}")
+                continue
+
+        return all_jobs

@@ -14,6 +14,8 @@ class Config:
     SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'saricaiproo@gmail.com')
     APP_PASSWORD = os.environ.get('APP_PASSWORD')
     DATABASE_URL = os.environ.get('DATABASE_URL')
+    ADZUNA_APP_ID = os.environ.get('ADZUNA_APP_ID', '')
+    ADZUNA_APP_KEY = os.environ.get('ADZUNA_APP_KEY', '')
     TIMEZONE = 'America/Toronto'
     SCRAPE_DELAY_MIN = 2
     SCRAPE_DELAY_MAX = 5

@@ -165,8 +165,16 @@ def _normalize(text):
 
 
 def is_duplicate(job_data):
+    """Check if job already exists. Returns True if duplicate and should be skipped.
+
+    Source priority: if same job exists from a higher-priority source, skip.
+    If same job exists from a lower-priority source, also skip (keep original).
+    """
+    from scrapers import SOURCE_PRIORITY
+
     title = _normalize(job_data.get('title', ''))
     company = _normalize(job_data.get('company', ''))
+    source = job_data.get('source', '')
     if not title:
         return False
 
@@ -177,16 +185,27 @@ def is_duplicate(job_data):
         conn.close()
         return True
 
-    # Check by normalized title + company
+    # Check by normalized title + company (cross-source dedup)
     if company:
-        rows = _fetchall(conn, 'SELECT title, company FROM jobs')
+        rows = _fetchall(conn, 'SELECT title, company, source FROM jobs')
         for r in rows:
             if _normalize(r['title']) == title and _normalize(r['company']) == company:
-                conn.close()
-                return True
+                # Same job exists from another source
+                existing_priority = SOURCE_PRIORITY.get(r['source'], 50)
+                new_priority = SOURCE_PRIORITY.get(source, 50)
+                if new_priority <= existing_priority:
+                    # New source is higher priority - replace existing
+                    _execute(conn, 'DELETE FROM jobs WHERE title = %s AND company = %s AND source = %s',
+                             (r['title'], r['company'], r['source']))
+                    conn.close()
+                    return False  # Not a duplicate - insert the better one
+                else:
+                    # Existing source is higher priority - skip new one
+                    conn.close()
+                    return True
     else:
         if len(title) > 20:
-            rows = _fetchall(conn, 'SELECT title FROM jobs')
+            rows = _fetchall(conn, 'SELECT title, source FROM jobs')
             for r in rows:
                 if _normalize(r['title']) == title:
                     conn.close()
