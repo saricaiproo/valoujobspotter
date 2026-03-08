@@ -1,9 +1,14 @@
 {% macro render_job_card(job, show_hide=True) %}
-<div class="job-card {% if job.work_type == 'teletravail' %}job-card--remote{% elif job.work_type == 'hybride' %}job-card--hybrid{% endif %}">
+<div class="job-card {% if job.applied %}job-card--applied{% endif %} {% if job.work_type == 'teletravail' %}job-card--remote{% elif job.work_type == 'hybride' %}job-card--hybrid{% endif %}">
     <div class="job-card-top">
         <div class="job-card-header">
             <h3 class="job-title"><a href="#" onclick="openJobModal(this); return false;" data-job='{{ job|job_modal_data }}'>{{ job.title }}</a></h3>
             <div class="job-actions">
+                <form method="POST" action="{{ url_for('toggle_apply', job_id=job.id) }}" class="inline-form">
+                    <button type="submit" class="btn-icon btn-icon-applied {% if job.applied %}active{% endif %}" title="{% if job.applied %}Postulé{% else %}Marquer comme postulé{% endif %}">
+                        &#10003;
+                    </button>
+                </form>
                 <form method="POST" action="{{ url_for('toggle_fav', job_id=job.id) }}" class="inline-form">
                     <button type="submit" class="btn-icon {% if job.favorite %}active{% endif %}" title="Favori">
                         {% if job.favorite %}&#9733;{% else %}&#9734;{% endif %}
@@ -28,6 +33,10 @@
             <span class="job-date-posted">{{ job.date_posted|format_posted_date }}</span>
             {% endif %}
         </div>
+
+        {% if job.applied %}
+        <div class="job-applied-banner">Postulé</div>
+        {% endif %}
     </div>
 
     <!-- Tags row: only show what we know -->

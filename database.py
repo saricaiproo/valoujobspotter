@@ -55,7 +55,9 @@ def init_db():
             emailed BOOLEAN DEFAULT FALSE,
             favorite BOOLEAN DEFAULT FALSE,
             hidden BOOLEAN DEFAULT FALSE,
-            highlights TEXT DEFAULT '[]'
+            highlights TEXT DEFAULT '[]',
+            applied BOOLEAN DEFAULT FALSE,
+            applied_at TIMESTAMP
         )
     ''')
 
@@ -68,6 +70,13 @@ def init_db():
     # Add parsed date column for proper sorting by publication date
     try:
         cur.execute("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS date_published TIMESTAMP")
+    except Exception:
+        conn.rollback()
+
+    # Add applied tracking columns
+    try:
+        cur.execute("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS applied BOOLEAN DEFAULT FALSE")
+        cur.execute("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS applied_at TIMESTAMP")
     except Exception:
         conn.rollback()
 
@@ -478,7 +487,8 @@ def _build_condition_filters():
 
 def get_all_jobs(page=1, per_page=20, source=None, favorite_only=False,
                   show_hidden=False, apply_conditions=True,
-                  work_type=None, job_type=None, sort='newest', days=None):
+                  work_type=None, job_type=None, applied=None,
+                  sort='newest', days=None):
     conn = get_db()
     query = 'SELECT * FROM jobs WHERE TRUE'
     params = []
@@ -498,6 +508,10 @@ def get_all_jobs(page=1, per_page=20, source=None, favorite_only=False,
     if job_type:
         query += ' AND job_type = %s'
         params.append(job_type)
+    if applied == 'yes':
+        query += ' AND applied = TRUE'
+    elif applied == 'no':
+        query += ' AND applied = FALSE'
     if days and days > 0:
         query += " AND COALESCE(date_published, date_scraped) >= CURRENT_TIMESTAMP - INTERVAL '%s days'"
         params.append(days)
@@ -538,6 +552,10 @@ def get_all_jobs(page=1, per_page=20, source=None, favorite_only=False,
     if job_type:
         count_query += ' AND job_type = %s'
         count_params.append(job_type)
+    if applied == 'yes':
+        count_query += ' AND applied = TRUE'
+    elif applied == 'no':
+        count_query += ' AND applied = FALSE'
     if days and days > 0:
         count_query += " AND COALESCE(date_published, date_scraped) >= CURRENT_TIMESTAMP - INTERVAL '%s days'"
         count_params.append(days)
@@ -565,6 +583,16 @@ def toggle_hidden(job_id):
     conn.close()
 
 
+def toggle_applied(job_id):
+    conn = get_db()
+    job = _fetchone(conn, 'SELECT applied FROM jobs WHERE id = %s', (job_id,))
+    if job and job['applied']:
+        _execute(conn, 'UPDATE jobs SET applied = FALSE, applied_at = NULL WHERE id = %s', (job_id,))
+    else:
+        _execute(conn, 'UPDATE jobs SET applied = TRUE, applied_at = CURRENT_TIMESTAMP WHERE id = %s', (job_id,))
+    conn.close()
+
+
 def get_job_stats():
     conn = get_db()
     stats = {}
@@ -574,6 +602,9 @@ def get_job_stats():
     )['c']
     stats['favorites'] = _fetchone(conn,
         'SELECT COUNT(*) as c FROM jobs WHERE favorite = TRUE'
+    )['c']
+    stats['applied'] = _fetchone(conn,
+        'SELECT COUNT(*) as c FROM jobs WHERE applied = TRUE'
     )['c']
     stats['sources'] = {}
     for row in _fetchall(conn,

@@ -46,7 +46,13 @@
                 {% endfor %}
             </select>
 
-            {% if source_filter or work_type_filter or job_type_filter or days or sort != 'newest' %}
+            <select name="applied" onchange="this.form.submit()">
+                <option value="" {% if applied_filter == '' %}selected{% endif %}>Tous les statuts</option>
+                <option value="yes" {% if applied_filter == 'yes' %}selected{% endif %}>Postulé</option>
+                <option value="no" {% if applied_filter == 'no' %}selected{% endif %}>Pas encore postulé</option>
+            </select>
+
+            {% if source_filter or work_type_filter or job_type_filter or days or sort != 'newest' or applied_filter %}
             <a href="{{ url_for('jobs_list') }}" class="filters-reset" title="Réinitialiser les filtres">&times; Réinitialiser</a>
             {% endif %}
         </form>
@@ -59,17 +65,17 @@
 
     <div class="pagination">
         {% if page > 1 %}
-        <a href="{{ url_for('jobs_list', page=page-1, source=source_filter, work_type=work_type_filter, job_type=job_type_filter, sort=sort, days=days) }}" class="btn btn-secondary">Précédent</a>
+        <a href="{{ url_for('jobs_list', page=page-1, source=source_filter, work_type=work_type_filter, job_type=job_type_filter, sort=sort, days=days, applied=applied_filter) }}" class="btn btn-secondary">Précédent</a>
         {% endif %}
         <span class="page-info">Page {{ page }} / {{ total_pages }}</span>
         {% if page < total_pages %}
-        <a href="{{ url_for('jobs_list', page=page+1, source=source_filter, work_type=work_type_filter, job_type=job_type_filter, sort=sort, days=days) }}" class="btn btn-secondary">Suivant</a>
+        <a href="{{ url_for('jobs_list', page=page+1, source=source_filter, work_type=work_type_filter, job_type=job_type_filter, sort=sort, days=days, applied=applied_filter) }}" class="btn btn-secondary">Suivant</a>
         {% endif %}
     </div>
     {% else %}
     <div class="empty-state">
         <p>Aucune offre trouvée avec ces filtres.</p>
-        {% if source_filter or work_type_filter or job_type_filter or days %}
+        {% if source_filter or work_type_filter or job_type_filter or days or applied_filter %}
         <a href="{{ url_for('jobs_list') }}" class="btn btn-secondary">Réinitialiser les filtres</a>
         {% else %}
         <button type="button" class="btn btn-primary" onclick="window.location.href='{{ url_for('dashboard') }}'">Retour au tableau de bord</button>

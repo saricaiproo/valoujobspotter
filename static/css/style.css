@@ -348,6 +348,42 @@ a:hover {
   border-left-color: #2196F3;
 }
 
+/* Applied = green tint, subtle */
+.job-card--applied {
+  border-left-color: #66bb6a;
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.04), var(--cream));
+}
+
+.job-applied-banner {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 3px 12px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #c8e6c9;
+}
+
+.btn-icon-applied {
+  color: var(--camel);
+}
+
+.btn-icon-applied:hover {
+  color: #2e7d32;
+  border-color: #66bb6a;
+  background: rgba(76, 175, 80, 0.08);
+}
+
+.btn-icon-applied.active {
+  color: #2e7d32;
+  border-color: #66bb6a;
+  background: rgba(76, 175, 80, 0.1);
+}
+
 .job-card:hover {
   box-shadow: var(--shadow-hover);
   transform: translateY(-2px);
@@ -1910,6 +1946,17 @@ a:hover {
 
 [data-theme="dark"] .job-card--remote {
   border-left-color: #66bb6a;
+}
+
+[data-theme="dark"] .job-card--applied {
+  border-left-color: #66bb6a;
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.08), var(--cream));
+}
+
+[data-theme="dark"] .job-applied-banner {
+  background: rgba(76, 175, 80, 0.15);
+  color: #81c784;
+  border-color: rgba(76, 175, 80, 0.3);
 }
 
 [data-theme="dark"] .job-card--hybrid {

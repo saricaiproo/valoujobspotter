@@ -12,7 +12,7 @@ from markupsafe import Markup
 from config import Config
 from database import (
     init_db, get_db, get_job_stats, get_all_jobs, get_setting, set_setting,
-    get_active_keywords, toggle_favorite, toggle_hidden, _fetchall, _execute,
+    get_active_keywords, toggle_favorite, toggle_hidden, toggle_applied, _fetchall, _execute,
 )
 from scheduler import init_scheduler, run_all_scrapers
 from email_service import send_daily_digest
@@ -219,6 +219,7 @@ def jobs_list():
     source_filter = request.args.get('source', '')
     work_type_filter = request.args.get('work_type', '')
     job_type_filter = request.args.get('job_type', '')
+    applied_filter = request.args.get('applied', '')
     sort = request.args.get('sort', 'newest')
     days = request.args.get('days', 0, type=int)
     per_page = 20
@@ -228,6 +229,7 @@ def jobs_list():
         source=source_filter or None,
         work_type=work_type_filter or None,
         job_type=job_type_filter or None,
+        applied=applied_filter or None,
         sort=sort,
         days=days or None,
     )
@@ -246,8 +248,8 @@ def jobs_list():
         'jobs.html', jobs=jobs, page=page, total=total,
         total_pages=total_pages, sources=sources,
         source_filter=source_filter, work_type_filter=work_type_filter,
-        job_type_filter=job_type_filter, sort=sort, days=days,
-        job_types_list=job_types_list,
+        job_type_filter=job_type_filter, applied_filter=applied_filter,
+        sort=sort, days=days, job_types_list=job_types_list,
     )
 
 
@@ -274,6 +276,13 @@ def toggle_fav(job_id):
 @login_required
 def toggle_hide(job_id):
     toggle_hidden(job_id)
+    return redirect(request.referrer or url_for('jobs_list'))
+
+
+@app.route('/toggle-applied/<int:job_id>', methods=['POST'])
+@login_required
+def toggle_apply(job_id):
+    toggle_applied(job_id)
     return redirect(request.referrer or url_for('jobs_list'))
 
 
