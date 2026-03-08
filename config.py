@@ -13,8 +13,7 @@ class Config:
     RECIPIENT_EMAIL = os.environ.get('RECIPIENT_EMAIL', 'valou2244@hotmail.fr')
     SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'saricaiproo@gmail.com')
     APP_PASSWORD = os.environ.get('APP_PASSWORD')
-    DATABASE_PATH = os.environ.get('DATABASE_PATH',
-                                     os.path.join(os.path.dirname(os.path.abspath(__file__)), 'jobs.db'))
+    DATABASE_URL = os.environ.get('DATABASE_URL')
     TIMEZONE = 'America/Toronto'
     SCRAPE_DELAY_MIN = 2
     SCRAPE_DELAY_MAX = 5
