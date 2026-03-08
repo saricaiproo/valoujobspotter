@@ -10,7 +10,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from config import Config
 from database import (
     init_db, get_db, get_job_stats, get_all_jobs, get_setting, set_setting,
-    get_active_keywords, toggle_favorite, toggle_hidden,
+    get_active_keywords, toggle_favorite, toggle_hidden, _fetchall, _execute,
 )
 from scheduler import init_scheduler, run_all_scrapers
 from email_service import send_daily_digest
@@ -87,11 +87,12 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    from database import _fetchall
     stats = get_job_stats()
     conn = get_db()
-    recent_jobs = conn.execute(
-        'SELECT * FROM jobs WHERE hidden = 0 ORDER BY date_scraped DESC LIMIT 10'
-    ).fetchall()
+    recent_jobs = _fetchall(conn,
+        'SELECT * FROM jobs WHERE hidden = FALSE ORDER BY date_scraped DESC LIMIT 10'
+    )
     conn.close()
     return render_template('dashboard.html', stats=stats, recent_jobs=recent_jobs)
 
@@ -109,9 +110,9 @@ def jobs_list():
     total_pages = ceil(total / per_page) if total > 0 else 1
 
     conn = get_db()
-    sources = [row['source'] for row in conn.execute(
+    sources = [row['source'] for row in _fetchall(conn,
         'SELECT DISTINCT source FROM jobs ORDER BY source'
-    ).fetchall()]
+    )]
     conn.close()
 
     return render_template(
@@ -150,8 +151,8 @@ def toggle_hide(job_id):
 @login_required
 def settings():
     conn = get_db()
-    keywords = conn.execute('SELECT * FROM search_keywords ORDER BY keyword').fetchall()
-    custom_boards = conn.execute('SELECT * FROM custom_boards ORDER BY name').fetchall()
+    keywords = _fetchall(conn, 'SELECT * FROM search_keywords ORDER BY keyword')
+    custom_boards = _fetchall(conn, 'SELECT * FROM custom_boards ORDER BY name')
     conn.close()
 
     work_types = json.loads(get_setting('work_types', '[]'))
@@ -216,12 +217,12 @@ def add_keyword():
     if keyword:
         conn = get_db()
         try:
-            conn.execute(
-                'INSERT OR IGNORE INTO search_keywords (keyword) VALUES (?)', (keyword,)
+            _execute(conn,
+                'INSERT INTO search_keywords (keyword) VALUES (%s) ON CONFLICT (keyword) DO NOTHING', (keyword,)
             )
-            conn.commit()
             flash(f'Mot-cle "{keyword}" ajoute!', 'success')
         except Exception:
+            conn.rollback()
             flash('Erreur lors de l\'ajout.', 'error')
         finally:
             conn.close()
@@ -232,10 +233,9 @@ def add_keyword():
 @login_required
 def toggle_keyword(keyword_id):
     conn = get_db()
-    conn.execute(
-        'UPDATE search_keywords SET active = NOT active WHERE id = ?', (keyword_id,)
+    _execute(conn,
+        'UPDATE search_keywords SET active = NOT active WHERE id = %s', (keyword_id,)
     )
-    conn.commit()
     conn.close()
     return redirect(url_for('settings'))
 
@@ -244,8 +244,7 @@ def toggle_keyword(keyword_id):
 @login_required
 def delete_keyword(keyword_id):
     conn = get_db()
-    conn.execute('DELETE FROM search_keywords WHERE id = ?', (keyword_id,))
-    conn.commit()
+    _execute(conn, 'DELETE FROM search_keywords WHERE id = %s', (keyword_id,))
     conn.close()
     flash('Mot-cle supprime.', 'success')
     return redirect(url_for('settings'))
@@ -258,10 +257,9 @@ def add_board():
     base_url = request.form.get('base_url', '').strip()
     if name and base_url:
         conn = get_db()
-        conn.execute(
-            'INSERT INTO custom_boards (name, base_url) VALUES (?, ?)', (name, base_url)
+        _execute(conn,
+            'INSERT INTO custom_boards (name, base_url) VALUES (%s, %s)', (name, base_url)
         )
-        conn.commit()
         conn.close()
         flash(f'Site "{name}" ajoute!', 'success')
     return redirect(url_for('settings'))
@@ -271,8 +269,7 @@ def add_board():
 @login_required
 def delete_board(board_id):
     conn = get_db()
-    conn.execute('DELETE FROM custom_boards WHERE id = ?', (board_id,))
-    conn.commit()
+    _execute(conn, 'DELETE FROM custom_boards WHERE id = %s', (board_id,))
     conn.close()
     flash('Site supprime.', 'success')
     return redirect(url_for('settings'))
