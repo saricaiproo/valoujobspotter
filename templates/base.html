@@ -70,8 +70,7 @@
                     <span class="job-modal-date" id="modal-date"></span>
                 </div>
             </div>
-            <div class="job-modal-statuses" id="modal-statuses"></div>
-            <div class="job-modal-highlights" id="modal-highlights"></div>
+            <div class="job-modal-tags" id="modal-tags"></div>
             <div class="job-modal-description" id="modal-description"></div>
             <div class="job-modal-footer">
                 <span class="tag tag-source" id="modal-source"></span>
@@ -100,30 +99,31 @@
             document.getElementById('modal-source').textContent = data.source || '';
             document.getElementById('modal-link').href = data.url;
 
-            // Statuses
-            const statusesEl = document.getElementById('modal-statuses');
-            statusesEl.innerHTML = '';
-            const statuses = [
-                { label: 'Mode', value: data.work_type, type: data.work_type === 'teletravail' ? 'remote' : data.work_type === 'hybride' ? 'hybrid' : data.work_type === 'presentiel' ? 'onsite' : 'unknown', display: data.work_type === 'teletravail' ? 'Télétravail' : data.work_type === 'hybride' ? 'Hybride' : data.work_type === 'presentiel' ? 'Présentiel' : 'Non spécifié' },
-                { label: 'Type', value: data.job_type, type: data.job_type ? 'type' : 'unknown', display: data.job_type || 'Non spécifié' },
-                { label: 'Salaire', value: data.salary, type: data.salary ? 'salary' : 'unknown', display: data.salary || 'Non spécifié' },
-            ];
-            statuses.forEach(s => {
-                const item = document.createElement('div');
-                item.className = 'status-item';
-                item.innerHTML = `<span class="status-label">${s.label}</span><span class="tag tag-${s.type}">${s.display}</span>`;
-                statusesEl.appendChild(item);
+            // Tags: only show what's known + highlights
+            const tagsEl = document.getElementById('modal-tags');
+            tagsEl.innerHTML = '';
+
+            const tags = [];
+            if (data.work_type === 'teletravail') tags.push({ cls: 'tag-remote', text: 'Télétravail' });
+            else if (data.work_type === 'hybride') tags.push({ cls: 'tag-hybrid', text: 'Hybride' });
+            else if (data.work_type === 'presentiel') tags.push({ cls: 'tag-onsite', text: 'Présentiel' });
+
+            if (data.job_type) tags.push({ cls: 'tag-type', text: data.job_type });
+            if (data.salary) tags.push({ cls: 'tag-salary', text: data.salary });
+
+            tags.forEach(t => {
+                const span = document.createElement('span');
+                span.className = 'tag ' + t.cls;
+                span.textContent = t.text;
+                tagsEl.appendChild(span);
             });
 
-            // Highlights
-            const highlightsEl = document.getElementById('modal-highlights');
-            highlightsEl.innerHTML = '';
             if (data.highlights && data.highlights.length) {
                 data.highlights.forEach(h => {
                     const chip = document.createElement('span');
                     chip.className = 'highlight-chip';
                     chip.textContent = h;
-                    highlightsEl.appendChild(chip);
+                    tagsEl.appendChild(chip);
                 });
             }
 

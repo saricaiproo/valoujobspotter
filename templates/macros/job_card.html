@@ -24,45 +24,31 @@
             {% if job.location %}
             <span class="job-location">{{ job.location }}</span>
             {% endif %}
-            {% if job.date_posted %}
-            <span class="job-date-posted">Publiée {{ job.date_posted|format_posted_date }}</span>
-            {% endif %}
-            <span class="job-time">{{ job.date_scraped|relative_date }}</span>
         </div>
     </div>
 
-    <!-- 3 key statuses — always visible -->
-    <div class="job-statuses">
-        <div class="status-item">
-            <span class="status-label">Mode</span>
-            {% if job.work_type == 'teletravail' %}
-            <span class="tag tag-remote">Télétravail</span>
-            {% elif job.work_type == 'hybride' %}
-            <span class="tag tag-hybrid">Hybride</span>
-            {% elif job.work_type == 'presentiel' %}
-            <span class="tag tag-onsite">Présentiel</span>
-            {% else %}
-            <span class="tag tag-unknown">Non spécifié</span>
-            {% endif %}
-        </div>
+    <!-- Tags row: only show what we know -->
+    <div class="job-tags">
+        {% if job.work_type == 'teletravail' %}
+        <span class="tag tag-remote">Télétravail</span>
+        {% elif job.work_type == 'hybride' %}
+        <span class="tag tag-hybrid">Hybride</span>
+        {% elif job.work_type == 'presentiel' %}
+        <span class="tag tag-onsite">Présentiel</span>
+        {% endif %}
 
-        <div class="status-item">
-            <span class="status-label">Type</span>
-            {% if job.job_type %}
-            <span class="tag tag-type">{{ job.job_type }}</span>
-            {% else %}
-            <span class="tag tag-unknown">Non spécifié</span>
-            {% endif %}
-        </div>
+        {% if job.job_type %}
+        <span class="tag tag-type">{{ job.job_type }}</span>
+        {% endif %}
 
-        <div class="status-item">
-            <span class="status-label">Salaire</span>
-            {% if job.salary %}
-            <span class="tag tag-salary">{{ job.salary }}</span>
-            {% else %}
-            <span class="tag tag-unknown">Non spécifié</span>
-            {% endif %}
-        </div>
+        {% if job.salary %}
+        <span class="tag tag-salary">{{ job.salary }}</span>
+        {% endif %}
+
+        {% set highlights = job.highlights|parse_highlights %}
+        {% for h in highlights %}
+        <span class="highlight-chip">{{ h }}</span>
+        {% endfor %}
     </div>
 
     {% if job.description %}
@@ -73,19 +59,12 @@
     </div>
     {% endif %}
 
-    <!-- Skill highlights -->
-    {% set highlights = job.highlights|parse_highlights %}
-    {% if highlights %}
-    <div class="job-highlights">
-        {% for h in highlights %}
-        <span class="highlight-chip">{{ h }}</span>
-        {% endfor %}
-    </div>
-    {% endif %}
-
     <div class="job-card-footer">
         <div class="footer-left">
             <span class="tag tag-source">{{ job.source }}</span>
+            {% if job.date_posted %}
+            <span class="job-date-posted">{{ job.date_posted|format_posted_date }}</span>
+            {% endif %}
         </div>
         <a href="{{ job.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-apply">Voir l'offre &rarr;</a>
     </div>

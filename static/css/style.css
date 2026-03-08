@@ -447,44 +447,18 @@ a:hover {
 }
 
 /* ============================================
-   3 KEY STATUSES ROW
+   JOB TAGS ROW (inline, only show what's known)
    ============================================ */
 
-.job-statuses {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0;
-  border-top: 1px solid var(--sand);
-  border-bottom: 1px solid var(--sand);
-  margin-top: 12px;
-}
-
-.status-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 10px 8px;
-  text-align: center;
-}
-
-.status-item:not(:last-child) {
-  border-right: 1px solid var(--sand);
-}
-
-.status-label {
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--camel);
-  font-weight: 600;
-}
-
-.job-tags-extra {
+.job-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 8px 20px 0;
+  gap: 6px;
+  padding: 10px 20px 0;
+}
+
+.job-tags:empty {
+  display: none;
 }
 
 /* ============================================
@@ -545,15 +519,7 @@ a:hover {
   border: 1px solid #e1bee7;
 }
 
-/* Unknown = dashed grey */
-.tag-unknown {
-  background: transparent;
-  color: var(--camel);
-  border: 1px dashed var(--sand);
-  font-weight: 400;
-  font-style: italic;
-  font-size: 0.75rem;
-}
+/* tag-unknown: no longer used (we hide missing info instead) */
 
 /* ============================================
    JOB CARD BODY & FOOTER
@@ -570,13 +536,7 @@ a:hover {
   line-height: 1.65;
 }
 
-/* Skill highlights */
-.job-highlights {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 10px 20px 0;
-}
+/* Skill highlights (inside .job-tags) */
 
 .highlight-chip {
   display: inline-block;
@@ -1267,23 +1227,10 @@ a:hover {
     padding: 10px 16px 0;
   }
 
-  .job-highlights {
+  /* highlights now inside .job-tags */
+
+  .job-tags {
     padding: 8px 16px 0;
-  }
-
-  .job-statuses {
-    grid-template-columns: 1fr;
-  }
-
-  .status-item:not(:last-child) {
-    border-right: none;
-    border-bottom: 1px solid var(--sand);
-  }
-
-  .status-item {
-    flex-direction: row;
-    justify-content: space-between;
-    padding: 8px 16px;
   }
 }
 
@@ -1405,36 +1352,14 @@ a:hover {
   font-weight: 500;
 }
 
-.job-modal-statuses {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0;
-  border-top: 1px solid var(--sand);
-  border-bottom: 1px solid var(--sand);
-  margin-top: 16px;
-}
-
-.job-modal-statuses .status-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 10px 8px;
-  text-align: center;
-}
-
-.job-modal-statuses .status-item:not(:last-child) {
-  border-right: 1px solid var(--sand);
-}
-
-.job-modal-highlights {
+.job-modal-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   padding: 16px 28px 0;
 }
 
-.job-modal-highlights:empty {
+.job-modal-tags:empty {
   display: none;
 }
 
@@ -1496,22 +1421,7 @@ a:hover {
     font-size: 1.1rem;
   }
 
-  .job-modal-statuses {
-    grid-template-columns: 1fr;
-  }
-
-  .job-modal-statuses .status-item:not(:last-child) {
-    border-right: none;
-    border-bottom: 1px solid var(--sand);
-  }
-
-  .job-modal-statuses .status-item {
-    flex-direction: row;
-    justify-content: space-between;
-    padding: 8px 20px;
-  }
-
-  .job-modal-highlights {
+  .job-modal-tags {
     padding: 12px 20px 0;
   }
 
@@ -1976,10 +1886,7 @@ a:hover {
   border-color: rgba(106, 27, 154, 0.3);
 }
 
-[data-theme="dark"] .tag-unknown {
-  color: var(--camel);
-  border-color: var(--sand);
-}
+/* tag-unknown removed */
 
 [data-theme="dark"] .job-desc {
   color: #9B8E82;
