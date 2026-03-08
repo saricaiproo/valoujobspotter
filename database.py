@@ -27,7 +27,10 @@ def _fetchall(conn, query, params=None):
 
 def _execute(conn, query, params=None):
     with conn.cursor() as cur:
-        cur.execute(query, params or ())
+        if params is None:
+            cur.execute(query)
+        else:
+            cur.execute(query, params)
     conn.commit()
 
 
