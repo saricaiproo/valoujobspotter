@@ -60,9 +60,11 @@ class AdzunaScraper:
                 url = (
                     f"https://api.adzuna.com/v1/api/jobs/ca/search/1"
                     f"?app_id={app_id}&app_key={app_key}"
-                    f"&results_per_page=25"
+                    f"&results_per_page=50"
                     f"&what={requests.utils.quote(keyword)}"
                     f"&where={requests.utils.quote(location)}"
+                    f"&sort_by=date"
+                    f"&max_days_old=14"
                     f"&content-type=application/json"
                 )
 
@@ -126,7 +128,7 @@ class AdzunaScraper:
                         'salary': salary,
                         'work_type': work_type,
                         'job_type': job_type,
-                        'description': description[:800] if description else '',
+                        'description': description[:3000] if description else '',
                         'source': self.SOURCE_NAME,
                         'date_posted': item.get('created', ''),
                         'highlights': extract_highlights(title + ' ' + description),

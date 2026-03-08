@@ -10,10 +10,40 @@ class JobillicoScraper(BaseScraper):
     SOURCE_NAME = 'Jobillico'
     BASE_URL = 'https://www.jobillico.com'
 
-    def build_search_url(self, keyword, location='Montreal'):
+    def build_search_url(self, keyword, location='Montreal', page=1):
         kw = quote_plus(keyword)
         loc = quote_plus(location)
-        return f"{self.BASE_URL}/recherche-emploi?skwd={kw}&sloc={loc}"
+        # sort=1 = by date (most recent first)
+        url = f"{self.BASE_URL}/recherche-emploi?skwd={kw}&sloc={loc}&sort=1"
+        if page > 1:
+            url += f"&page={page}"
+        return url
+
+    def scrape(self, keywords, location='Montreal'):
+        """Override to add pagination — scrape pages 1-3 for each keyword."""
+        all_jobs = []
+        for keyword in keywords:
+            for page in range(1, 4):  # pages 1, 2, 3
+                try:
+                    url = self.build_search_url(keyword, location, page=page)
+                    logger.info(f"[Jobillico] Recherche: {keyword} @ {location} (page {page})")
+                    soup = self._get_soup(url)
+                    if soup is None:
+                        break
+                    jobs = self.parse_listing(soup)
+                    if not jobs:
+                        break
+                    for job in jobs:
+                        job['source'] = self.SOURCE_NAME
+                        job['job_type'] = self.normalize_job_type(job.get('job_type', ''))
+                    all_jobs.extend(jobs)
+                    logger.info(f"[Jobillico] {len(jobs)} offres page {page} pour '{keyword}'")
+                    if len(jobs) < 5:
+                        break
+                except Exception as e:
+                    logger.error(f"[Jobillico] Erreur scraping '{keyword}' page {page}: {e}")
+                    break
+        return all_jobs
 
     def parse_listing(self, soup):
         jobs = []
@@ -114,7 +144,7 @@ class JobillicoScraper(BaseScraper):
         if desc_el:
             desc = desc_el.get_text(' ', strip=True)
             desc = re.sub(r'\s+', ' ', desc)
-            job['description'] = desc[:800]
+            job['description'] = desc[:3000]
 
         page_text = soup.get_text(' ', strip=True)
 

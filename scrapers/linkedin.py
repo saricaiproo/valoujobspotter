@@ -9,9 +9,40 @@ class LinkedInScraper(BaseScraper):
     SOURCE_NAME = 'LinkedIn'
     BASE_URL = 'https://www.linkedin.com'
 
-    def build_search_url(self, keyword, location='Montreal'):
+    def build_search_url(self, keyword, location='Montreal', start=0):
         kw = quote_plus(keyword)
-        return f"{self.BASE_URL}/jobs/search/?keywords={kw}&location=Montreal%2C+Quebec%2C+Canada&sortBy=DD"
+        # f_TPR=r604800 = past week, sortBy=DD = date descending
+        url = f"{self.BASE_URL}/jobs/search/?keywords={kw}&location=Montreal%2C+Quebec%2C+Canada&sortBy=DD&f_TPR=r604800"
+        if start > 0:
+            url += f"&start={start}"
+        return url
+
+    def scrape(self, keywords, location='Montreal'):
+        """Override to add pagination — scrape pages 1-3 for each keyword."""
+        all_jobs = []
+        for keyword in keywords:
+            for page in range(3):  # pages 0, 1, 2
+                try:
+                    start = page * 25
+                    url = self.build_search_url(keyword, location, start=start)
+                    logger.info(f"[LinkedIn] Recherche: {keyword} @ {location} (page {page+1})")
+                    soup = self._get_soup(url)
+                    if soup is None:
+                        break
+                    jobs = self.parse_listing(soup)
+                    if not jobs:
+                        break  # no more results
+                    for job in jobs:
+                        job['source'] = self.SOURCE_NAME
+                        job['job_type'] = self.normalize_job_type(job.get('job_type', ''))
+                    all_jobs.extend(jobs)
+                    logger.info(f"[LinkedIn] {len(jobs)} offres page {page+1} pour '{keyword}'")
+                    if len(jobs) < 10:
+                        break  # less than a full page, no more
+                except Exception as e:
+                    logger.error(f"[LinkedIn] Erreur scraping '{keyword}' page {page+1}: {e}")
+                    break
+        return all_jobs
 
     def parse_listing(self, soup):
         jobs = []
@@ -91,7 +122,7 @@ class LinkedInScraper(BaseScraper):
         if desc_el:
             desc = desc_el.get_text(' ', strip=True)
             desc = re.sub(r'\s+', ' ', desc)
-            job['description'] = desc[:800]
+            job['description'] = desc[:3000]
 
         # Work type from criteria list
         criteria = soup.select('li.description__job-criteria-item')

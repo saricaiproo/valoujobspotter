@@ -15,7 +15,8 @@ class GuichetEmploisScraper(BaseScraper):
 
     def build_search_url(self, keyword, location='Montreal'):
         kw = quote_plus(keyword)
-        return f"{self.BASE_URL}/jobsearch/jobsearch?searchstring={kw}&locationstring=Montr%C3%A9al%2C+QC&sort=D"
+        # sort=M = most recent, fpod=7 = posted in last 7 days
+        return f"{self.BASE_URL}/jobsearch/jobsearch?searchstring={kw}&locationstring=Montr%C3%A9al%2C+QC&sort=M&fpod=7"
 
     def parse_listing(self, soup):
         jobs = []

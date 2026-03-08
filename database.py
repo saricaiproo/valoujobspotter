@@ -65,6 +65,23 @@ def init_db():
     except Exception:
         conn.rollback()
 
+    # Add parsed date column for proper sorting by publication date
+    try:
+        cur.execute("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS date_published TIMESTAMP")
+    except Exception:
+        conn.rollback()
+
+    # Backfill date_published from date_posted text
+    try:
+        cur.execute("""
+            UPDATE jobs SET date_published = date_posted::timestamp
+            WHERE date_published IS NULL AND date_posted IS NOT NULL AND date_posted != ''
+            AND date_posted ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+        """)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+
     cur.execute('''
         CREATE TABLE IF NOT EXISTS search_keywords (
             id SERIAL PRIMARY KEY,
@@ -303,6 +320,28 @@ def is_relevant(job_data):
     return False
 
 
+def _parse_date_posted(date_str):
+    """Try to parse date_posted text into a datetime for proper sorting."""
+    if not date_str:
+        return None
+    s = str(date_str).strip()
+    for fmt in ('%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%dT%H:%M:%S',
+                '%Y-%m-%dT%H:%M:%S.%f', '%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y'):
+        try:
+            from datetime import datetime
+            return datetime.strptime(s[:26], fmt)
+        except (ValueError, IndexError):
+            continue
+    # Try just the date part if there's a T
+    if 'T' in s:
+        try:
+            from datetime import datetime
+            return datetime.strptime(s[:10], '%Y-%m-%d')
+        except (ValueError, IndexError):
+            pass
+    return None
+
+
 def insert_job(job_data):
     if not is_relevant(job_data):
         return False
@@ -312,12 +351,13 @@ def insert_job(job_data):
     conn = get_db()
     try:
         highlights = json.dumps(job_data.get('highlights', []))
+        date_published = _parse_date_posted(job_data.get('date_posted'))
         with conn.cursor() as cur:
             cur.execute('''
                 INSERT INTO jobs
                 (title, company, location, url, salary, work_type, job_type,
-                 description, source, date_posted, highlights)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 description, source, date_posted, highlights, date_published)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (url) DO NOTHING
             ''', (
                 job_data.get('title'),
@@ -331,6 +371,7 @@ def insert_job(job_data):
                 job_data['source'],
                 job_data.get('date_posted'),
                 highlights,
+                date_published,
             ))
         conn.commit()
         return cur.rowcount > 0
@@ -422,7 +463,7 @@ def get_all_jobs(page=1, per_page=20, source=None, favorite_only=False,
         query += ' AND job_type = %s'
         params.append(job_type)
     if days and days > 0:
-        query += " AND date_scraped >= CURRENT_TIMESTAMP - INTERVAL '%s days'"
+        query += " AND COALESCE(date_published, date_scraped) >= CURRENT_TIMESTAMP - INTERVAL '%s days'"
         params.append(days)
 
     # Apply user conditions from settings
@@ -432,13 +473,13 @@ def get_all_jobs(page=1, per_page=20, source=None, favorite_only=False,
             query += ' AND ' + clause
         params.extend(cond_params)
 
-    # Sorting
+    # Sorting — use date_published (actual post date) with date_scraped as fallback
     if sort == 'oldest':
-        query += ' ORDER BY date_scraped ASC'
+        query += ' ORDER BY COALESCE(date_published, date_scraped) ASC'
     elif sort == 'salary':
-        query += ' ORDER BY salary DESC NULLS LAST, date_scraped DESC'
+        query += ' ORDER BY salary DESC NULLS LAST, COALESCE(date_published, date_scraped) DESC'
     else:
-        query += ' ORDER BY date_scraped DESC'
+        query += ' ORDER BY COALESCE(date_published, date_scraped) DESC'
 
     query += ' LIMIT %s OFFSET %s'
     params.extend([per_page, (page - 1) * per_page])
@@ -462,7 +503,7 @@ def get_all_jobs(page=1, per_page=20, source=None, favorite_only=False,
         count_query += ' AND job_type = %s'
         count_params.append(job_type)
     if days and days > 0:
-        count_query += " AND date_scraped >= CURRENT_TIMESTAMP - INTERVAL '%s days'"
+        count_query += " AND COALESCE(date_published, date_scraped) >= CURRENT_TIMESTAMP - INTERVAL '%s days'"
         count_params.append(days)
 
     if apply_conditions:

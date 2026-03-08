@@ -2,6 +2,7 @@ import re
 import time
 import random
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
 from bs4 import BeautifulSoup
 from config import Config
@@ -221,65 +222,119 @@ class BaseScraper:
                 return ' '.join(match.group(1).split())
         return ''
 
-    def enrich_job(self, job):
-        """Fetch detail page and extract additional info."""
-        url = job.get('url', '')
-        if not url:
-            return job
-
+    def _fetch_detail_html(self, url):
+        """Fetch a detail page and return (url, html) or (url, None)."""
         try:
-            # Shorter delay for detail pages (same domain, already visited)
-            time.sleep(random.uniform(1, 2))
-            logger.info(f"[{self.SOURCE_NAME}] Enrichissement: {url[:80]}")
-            response = self.session.get(url, timeout=20)
-            if response.status_code != 200:
-                logger.debug(f"[{self.SOURCE_NAME}] Detail page {response.status_code}")
-                return job
-
-            soup = BeautifulSoup(response.text, 'lxml')
-
-            # Let subclass extract specific fields first
-            job = self.parse_detail(soup, job)
-
-            # Extract full page text for detection
-            page_text = soup.get_text(' ', strip=True)
-            page_text_clean = re.sub(r'\s+', ' ', page_text)
-
-            # If description is still empty, try generic containers
-            if not job.get('description'):
-                for selector in [
-                    'div.description__text', 'div.show-more-less-html__markup',
-                    'div.job-description', 'section.description',
-                    'div[class*="description"]', 'article',
-                    'div[class*="content"]', 'main',
-                ]:
-                    desc_el = soup.select_one(selector)
-                    if desc_el:
-                        desc = desc_el.get_text(' ', strip=True)
-                        desc = re.sub(r'\s+', ' ', desc)
-                        if len(desc) > 50:  # skip tiny matches
-                            job['description'] = desc[:800]
-                            break
-
-            # Fill missing fields from full page text
-            if not job.get('work_type'):
-                job['work_type'] = self._detect_work_type(page_text_clean)
-            if not job.get('job_type'):
-                job['job_type'] = self.detect_job_type(page_text_clean)
-            if not job.get('salary'):
-                job['salary'] = self.detect_salary(page_text_clean)
-
-            # Extract highlights from everything
-            full_text = ' '.join(filter(None, [
-                job.get('description', ''),
-                page_text_clean[:2000],
-            ]))
-            job['highlights'] = extract_highlights(full_text)
-
+            headers = {
+                'User-Agent': random.choice(USER_AGENTS),
+                'Accept-Language': 'fr-CA,fr;q=0.9,en-CA;q=0.8,en;q=0.7',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            }
+            response = requests.get(url, headers=headers, timeout=15)
+            if response.status_code == 200:
+                return url, response.text
+            logger.debug(f"[{self.SOURCE_NAME}] Detail {response.status_code}: {url[:60]}")
         except Exception as e:
-            logger.debug(f"[{self.SOURCE_NAME}] Erreur enrichissement {url}: {e}")
+            logger.debug(f"[{self.SOURCE_NAME}] Fetch failed: {e}")
+        return url, None
 
-        return job
+    def enrich_jobs_batch(self, jobs, max_jobs=20):
+        """Enrich multiple jobs in parallel. Returns list of enriched jobs."""
+        # Filter to jobs that need enrichment
+        to_enrich = []
+        no_enrich = []
+        for job in jobs:
+            if len(to_enrich) < max_jobs and self._needs_enrichment(job):
+                to_enrich.append(job)
+            else:
+                no_enrich.append(job)
+
+        if not to_enrich:
+            return jobs
+
+        logger.info(f"[{self.SOURCE_NAME}] Enrichissement parallele de {len(to_enrich)} offres...")
+
+        # Fetch all detail pages in parallel (5 at a time)
+        url_to_html = {}
+        urls = [j['url'] for j in to_enrich if j.get('url')]
+        with ThreadPoolExecutor(max_workers=5) as pool:
+            futures = {pool.submit(self._fetch_detail_html, url): url for url in urls}
+            for future in as_completed(futures):
+                url, html = future.result()
+                if html:
+                    url_to_html[url] = html
+
+        logger.info(f"[{self.SOURCE_NAME}] {len(url_to_html)}/{len(urls)} pages recuperees")
+
+        # Process each fetched page
+        for job in to_enrich:
+            html = url_to_html.get(job.get('url'))
+            if not html:
+                continue
+
+            try:
+                soup = BeautifulSoup(html, 'lxml')
+                job = self.parse_detail(soup, job)
+
+                page_text = soup.get_text(' ', strip=True)
+                page_text_clean = re.sub(r'\s+', ' ', page_text)
+
+                # Get description from detail page
+                if not job.get('description'):
+                    for selector in [
+                        'div.description__text', 'div.show-more-less-html__markup',
+                        'div.job-description', 'section.description',
+                        'div[class*="description"]', 'article',
+                    ]:
+                        desc_el = soup.select_one(selector)
+                        if desc_el:
+                            desc = desc_el.get_text(' ', strip=True)
+                            desc = re.sub(r'\s+', ' ', desc)
+                            if len(desc) > 50:
+                                job['description'] = desc[:3000]
+                                break
+
+                # Fill missing fields
+                if not job.get('work_type'):
+                    job['work_type'] = self._detect_work_type(page_text_clean)
+                if not job.get('job_type'):
+                    job['job_type'] = self.detect_job_type(page_text_clean)
+                if not job.get('salary'):
+                    job['salary'] = self.detect_salary(page_text_clean)
+
+                # Highlights
+                full_text = ' '.join(filter(None, [
+                    job.get('description', ''), page_text_clean[:2000],
+                ]))
+                job['highlights'] = extract_highlights(full_text)
+
+                logger.info(f"  + {job.get('title', '')[:45]} | "
+                            f"mode={job.get('work_type') or '?'} "
+                            f"type={job.get('job_type') or '?'} "
+                            f"sal={'oui' if job.get('salary') else 'non'} "
+                            f"desc={'oui' if job.get('description') else 'non'}")
+
+            except Exception as e:
+                logger.debug(f"[{self.SOURCE_NAME}] Parse failed: {e}")
+
+        return to_enrich + no_enrich
+
+    @staticmethod
+    def _needs_enrichment(job):
+        if not job.get('description'):
+            return True
+        if not job.get('work_type'):
+            return True
+        if not job.get('job_type'):
+            return True
+        if not job.get('salary'):
+            return True
+        return False
+
+    def enrich_job(self, job):
+        """Single job enrichment (fallback, prefer enrich_jobs_batch)."""
+        results = self.enrich_jobs_batch([job], max_jobs=1)
+        return results[0] if results else job
 
     def scrape(self, keywords, location='Montreal'):
         all_jobs = []
