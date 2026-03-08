@@ -574,11 +574,12 @@ a:hover {
   margin: 0;
 }
 
-/* Date posted */
+/* Date posted — prominent in info row */
 .job-date-posted {
-  font-size: 0.8rem;
-  color: var(--olive-mist);
-  font-weight: 500;
+  font-size: 0.82rem;
+  color: var(--terracotta);
+  font-weight: 600;
+  margin-left: auto;
 }
 
 /* Relative time in header */
