@@ -11,26 +11,35 @@ logger = logging.getLogger(__name__)
 scheduler = BackgroundScheduler(timezone=pytz.timezone('America/Toronto'))
 
 
-def run_all_scrapers():
+def run_all_scrapers(max_keywords=None):
     logger.info("Demarrage du scraping...")
     keywords = get_active_keywords()
     if not keywords:
         logger.warning("Aucun mot-cle actif.")
-        return
+        return 0
+
+    if max_keywords:
+        keywords = keywords[:max_keywords]
+        logger.info(f"Limite a {max_keywords} mots-cles: {keywords}")
 
     total_new = 0
     for ScraperClass in ALL_SCRAPERS:
         try:
+            logger.info(f"--- Demarrage {ScraperClass.SOURCE_NAME} ---")
             scraper = ScraperClass()
             jobs = scraper.scrape(keywords)
+            new_for_source = 0
             for job in jobs:
                 if insert_job(job):
+                    new_for_source += 1
                     total_new += 1
+            logger.info(f"--- {ScraperClass.SOURCE_NAME}: {new_for_source} nouvelles offres ---")
         except Exception as e:
-            logger.error(f"Erreur scraper {ScraperClass.SOURCE_NAME}: {e}")
+            logger.error(f"Erreur scraper {ScraperClass.SOURCE_NAME}: {e}", exc_info=True)
             continue
 
     logger.info(f"Scraping termine. {total_new} nouvelle(s) offre(s) ajoutee(s).")
+    return total_new
 
 
 def init_scheduler():

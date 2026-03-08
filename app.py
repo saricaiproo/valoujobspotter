@@ -279,7 +279,7 @@ def delete_board(board_id):
 @login_required
 def trigger_scrape():
     try:
-        run_all_scrapers()
+        run_all_scrapers(max_keywords=5)
         stats = get_job_stats()
         flash(f'Recherche terminee! {stats["today"]} offre(s) trouvee(s) aujourd\'hui, {stats["total"]} au total.', 'success')
     except Exception as e:
