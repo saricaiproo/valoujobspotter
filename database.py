@@ -318,7 +318,45 @@ def mark_jobs_emailed(job_ids):
     conn.close()
 
 
-def get_all_jobs(page=1, per_page=20, source=None, favorite_only=False, show_hidden=False):
+def _build_condition_filters():
+    """Build SQL filter clauses from user's saved conditions."""
+    clauses = []
+    params = []
+
+    work_types = json.loads(get_setting('work_types', '[]'))
+    job_types = json.loads(get_setting('job_types', '[]'))
+    show_unknown = get_setting('show_unknown', '1') == '1'
+
+    # Work type filter
+    if work_types:
+        wt_placeholders = ','.join(['%s'] * len(work_types))
+        if show_unknown:
+            clauses.append(f"(work_type IN ({wt_placeholders}) OR work_type IS NULL OR work_type = '')")
+        else:
+            clauses.append(f"work_type IN ({wt_placeholders})")
+        params.extend(work_types)
+
+    # Job type filter — map setting values to display values
+    if job_types:
+        type_map = {
+            'temps_plein': 'Temps plein',
+            'temps_partiel': 'Temps partiel',
+            'contrat': 'Contrat',
+            'stage': 'Stage',
+            'pigiste': 'Pigiste',
+        }
+        display_types = [type_map.get(jt, jt) for jt in job_types]
+        jt_placeholders = ','.join(['%s'] * len(display_types))
+        if show_unknown:
+            clauses.append(f"(job_type IN ({jt_placeholders}) OR job_type IS NULL OR job_type = '')")
+        else:
+            clauses.append(f"job_type IN ({jt_placeholders})")
+        params.extend(display_types)
+
+    return clauses, params
+
+
+def get_all_jobs(page=1, per_page=20, source=None, favorite_only=False, show_hidden=False, apply_conditions=True):
     conn = get_db()
     query = 'SELECT * FROM jobs WHERE TRUE'
     params = []
@@ -330,6 +368,13 @@ def get_all_jobs(page=1, per_page=20, source=None, favorite_only=False, show_hid
         params.append(source)
     if favorite_only:
         query += ' AND favorite = TRUE'
+
+    # Apply user conditions
+    if apply_conditions:
+        cond_clauses, cond_params = _build_condition_filters()
+        for clause in cond_clauses:
+            query += ' AND ' + clause
+        params.extend(cond_params)
 
     query += ' ORDER BY date_scraped DESC LIMIT %s OFFSET %s'
     params.extend([per_page, (page - 1) * per_page])
@@ -345,6 +390,12 @@ def get_all_jobs(page=1, per_page=20, source=None, favorite_only=False, show_hid
         count_params.append(source)
     if favorite_only:
         count_query += ' AND favorite = TRUE'
+
+    if apply_conditions:
+        cond_clauses, cond_params = _build_condition_filters()
+        for clause in cond_clauses:
+            count_query += ' AND ' + clause
+        count_params.extend(cond_params)
 
     total = _fetchone(conn, count_query, count_params)['total']
     conn.close()

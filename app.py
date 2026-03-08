@@ -88,11 +88,7 @@ def logout():
 @login_required
 def dashboard():
     stats = get_job_stats()
-    conn = get_db()
-    recent_jobs = _fetchall(conn,
-        'SELECT * FROM jobs WHERE hidden = FALSE ORDER BY date_scraped DESC LIMIT 10'
-    )
-    conn.close()
+    recent_jobs, _ = get_all_jobs(page=1, per_page=10, apply_conditions=True)
     return render_template('dashboard.html', stats=stats, recent_jobs=recent_jobs)
 
 
@@ -125,7 +121,7 @@ def jobs_list():
 def favorites():
     page = request.args.get('page', 1, type=int)
     per_page = 20
-    jobs, total = get_all_jobs(page=page, per_page=per_page, favorite_only=True)
+    jobs, total = get_all_jobs(page=page, per_page=per_page, favorite_only=True, apply_conditions=False)
     total_pages = ceil(total / per_page) if total > 0 else 1
     return render_template(
         'favorites.html', jobs=jobs, page=page, total=total, total_pages=total_pages,
@@ -160,6 +156,7 @@ def settings():
     salary_min = get_setting('salary_min', '50000')
     salary_max = get_setting('salary_max', '60000')
     date_range = get_setting('date_range_days', '30')
+    show_unknown = get_setting('show_unknown', '1') == '1'
     email_enabled = get_setting('email_enabled', '1') == '1'
     email_hour = get_setting('email_hour', '8')
     email_minute = get_setting('email_minute', '0')
@@ -169,6 +166,7 @@ def settings():
         keywords=keywords, custom_boards=custom_boards,
         work_types=work_types, job_types=job_types, locations=locations,
         salary_min=salary_min, salary_max=salary_max, date_range=date_range,
+        show_unknown=show_unknown,
         email_enabled=email_enabled, email_hour=email_hour, email_minute=email_minute,
     )
 
@@ -183,14 +181,17 @@ def save_settings():
     salary_max = request.form.get('salary_max', '60000')
     date_range = request.form.get('date_range_days', '30')
 
+    show_unknown = '1' if request.form.get('show_unknown') else '0'
+
     set_setting('work_types', json.dumps(work_types))
     set_setting('job_types', json.dumps(job_types))
     set_setting('locations', json.dumps(locations))
     set_setting('salary_min', salary_min)
     set_setting('salary_max', salary_max)
     set_setting('date_range_days', date_range)
+    set_setting('show_unknown', show_unknown)
 
-    flash('Filtres sauvegardes avec succes!', 'success')
+    flash('Conditions sauvegardees avec succes!', 'success')
     return redirect(url_for('settings'))
 
 

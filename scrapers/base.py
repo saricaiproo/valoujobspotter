@@ -50,6 +50,24 @@ class BaseScraper:
     def parse_listing(self, soup):
         raise NotImplementedError
 
+    @staticmethod
+    def normalize_job_type(text):
+        """Normalize job type to standard values."""
+        if not text:
+            return ''
+        t = text.lower().strip()
+        if any(w in t for w in ['temps plein', 'full time', 'full-time', 'permanent', 'temps complet']):
+            return 'Temps plein'
+        if any(w in t for w in ['temps partiel', 'part time', 'part-time']):
+            return 'Temps partiel'
+        if any(w in t for w in ['contrat', 'contract', 'contractuel', 'temporaire']):
+            return 'Contrat'
+        if any(w in t for w in ['stage', 'intern', 'stagiaire']):
+            return 'Stage'
+        if any(w in t for w in ['pigiste', 'freelance', 'autonome']):
+            return 'Pigiste'
+        return text.strip()
+
     def scrape(self, keywords, location='Montreal'):
         all_jobs = []
         for keyword in keywords:
@@ -62,6 +80,7 @@ class BaseScraper:
                 jobs = self.parse_listing(soup)
                 for job in jobs:
                     job['source'] = self.SOURCE_NAME
+                    job['job_type'] = self.normalize_job_type(job.get('job_type', ''))
                 all_jobs.extend(jobs)
                 logger.info(f"[{self.SOURCE_NAME}] {len(jobs)} offres trouvees pour '{keyword}'")
             except Exception as e:

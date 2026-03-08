@@ -7,38 +7,15 @@
         <p>Personnalise ta recherche d'emploi</p>
     </div>
 
-    <!-- Keywords -->
-    <div class="settings-section">
-        <h2>Mots-cles de recherche</h2>
-        <div class="keywords-list">
-            {% for kw in keywords %}
-            <div class="keyword-item">
-                <span class="keyword-text {% if not kw.active %}inactive{% endif %}">{{ kw.keyword }}</span>
-                <div class="keyword-actions">
-                    <form method="POST" action="{{ url_for('toggle_keyword', keyword_id=kw.id) }}" class="inline-form">
-                        <button type="submit" class="btn-small {% if kw.active %}btn-active{% else %}btn-inactive{% endif %}">
-                            {% if kw.active %}Actif{% else %}Inactif{% endif %}
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ url_for('delete_keyword', keyword_id=kw.id) }}" class="inline-form">
-                        <button type="submit" class="btn-small btn-danger">Supprimer</button>
-                    </form>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        <form method="POST" action="{{ url_for('add_keyword') }}" class="add-form">
-            <input type="text" name="keyword" placeholder="Ajouter un mot-cle..." required>
-            <button type="submit" class="btn btn-primary">Ajouter</button>
-        </form>
-    </div>
-
-    <!-- Filters -->
-    <div class="settings-section">
-        <h2>Filtres</h2>
+    <!-- Conditions / Filters -->
+    <div class="settings-section settings-section--highlight">
+        <h2>Mes conditions</h2>
+        <p class="section-desc">Seules les offres qui correspondent a tes conditions seront affichees. Les offres sans information seront incluses par defaut.</p>
         <form method="POST" action="{{ url_for('save_settings') }}">
+
+            <!-- Status 1: Work Mode -->
             <div class="form-group">
-                <label>Type de travail</label>
+                <label>Mode de travail</label>
                 <div class="checkbox-group">
                     <label class="checkbox-label">
                         <input type="checkbox" name="work_types" value="teletravail" {% if 'teletravail' in work_types %}checked{% endif %}>
@@ -55,6 +32,7 @@
                 </div>
             </div>
 
+            <!-- Status 2: Job Type -->
             <div class="form-group">
                 <label>Type de poste</label>
                 <div class="checkbox-group">
@@ -81,15 +59,26 @@
                 </div>
             </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="salary_min">Salaire minimum ($)</label>
-                    <input type="number" id="salary_min" name="salary_min" value="{{ salary_min }}" step="1000">
+            <!-- Status 3: Salary -->
+            <div class="form-group">
+                <label>Salaire</label>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="salary_min">Minimum ($)</label>
+                        <input type="number" id="salary_min" name="salary_min" value="{{ salary_min }}" step="1000">
+                    </div>
+                    <div class="form-group">
+                        <label for="salary_max">Maximum ($)</label>
+                        <input type="number" id="salary_max" name="salary_max" value="{{ salary_max }}" step="1000">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="salary_max">Salaire maximum ($)</label>
-                    <input type="number" id="salary_max" name="salary_max" value="{{ salary_max }}" step="1000">
-                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="checkbox-label checkbox-label--subtle">
+                    <input type="checkbox" name="show_unknown" {% if show_unknown %}checked{% endif %}>
+                    Inclure les offres sans information (mode, type ou salaire non specifie)
+                </label>
             </div>
 
             <div class="form-group">
@@ -115,7 +104,33 @@
                 <button type="button" class="btn btn-secondary btn-small" onclick="addLocation()">+ Ajouter une localisation</button>
             </div>
 
-            <button type="submit" class="btn btn-primary">Sauvegarder les filtres</button>
+            <button type="submit" class="btn btn-primary">Sauvegarder mes conditions</button>
+        </form>
+    </div>
+
+    <!-- Keywords -->
+    <div class="settings-section">
+        <h2>Mots-cles de recherche</h2>
+        <div class="keywords-list">
+            {% for kw in keywords %}
+            <div class="keyword-item">
+                <span class="keyword-text {% if not kw.active %}inactive{% endif %}">{{ kw.keyword }}</span>
+                <div class="keyword-actions">
+                    <form method="POST" action="{{ url_for('toggle_keyword', keyword_id=kw.id) }}" class="inline-form">
+                        <button type="submit" class="btn-small {% if kw.active %}btn-active{% else %}btn-inactive{% endif %}">
+                            {% if kw.active %}Actif{% else %}Inactif{% endif %}
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('delete_keyword', keyword_id=kw.id) }}" class="inline-form">
+                        <button type="submit" class="btn-small btn-danger">Supprimer</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <form method="POST" action="{{ url_for('add_keyword') }}" class="add-form">
+            <input type="text" name="keyword" placeholder="Ajouter un mot-cle..." required>
+            <button type="submit" class="btn btn-primary">Ajouter</button>
         </form>
     </div>
 

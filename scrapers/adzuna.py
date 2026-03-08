@@ -19,6 +19,19 @@ class AdzunaScraper:
             return 'presentiel'
         return ''
 
+    @staticmethod
+    def _normalize_job_type(text):
+        if not text:
+            return ''
+        t = text.lower().strip()
+        if any(w in t for w in ['full_time', 'full time', 'permanent', 'temps plein']):
+            return 'Temps plein'
+        if any(w in t for w in ['part_time', 'part time', 'temps partiel']):
+            return 'Temps partiel'
+        if any(w in t for w in ['contract', 'contrat', 'temporaire']):
+            return 'Contrat'
+        return text.strip()
+
     def scrape(self, keywords, location='Montreal'):
         app_id = Config.ADZUNA_APP_ID
         app_key = Config.ADZUNA_APP_KEY
@@ -83,7 +96,8 @@ class AdzunaScraper:
 
                     contract_type = item.get('contract_type', '')
                     contract_time = item.get('contract_time', '')
-                    job_type = ' '.join(filter(None, [contract_time, contract_type]))
+                    raw_type = ' '.join(filter(None, [contract_time, contract_type]))
+                    job_type = self._normalize_job_type(raw_type)
 
                     all_jobs.append({
                         'title': title,

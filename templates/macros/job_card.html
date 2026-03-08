@@ -27,24 +27,42 @@
         </div>
     </div>
 
-    <div class="job-tags">
-        {% if job.work_type == 'teletravail' %}
-        <span class="tag tag-remote">Teletravail</span>
-        {% elif job.work_type == 'hybride' %}
-        <span class="tag tag-hybrid">Hybride</span>
-        {% elif job.work_type == 'presentiel' %}
-        <span class="tag tag-onsite">Presentiel</span>
-        {% endif %}
+    <!-- 3 key statuses — always visible -->
+    <div class="job-statuses">
+        <div class="status-item">
+            <span class="status-label">Mode</span>
+            {% if job.work_type == 'teletravail' %}
+            <span class="tag tag-remote">Teletravail</span>
+            {% elif job.work_type == 'hybride' %}
+            <span class="tag tag-hybrid">Hybride</span>
+            {% elif job.work_type == 'presentiel' %}
+            <span class="tag tag-onsite">Presentiel</span>
+            {% else %}
+            <span class="tag tag-unknown">Non specifie</span>
+            {% endif %}
+        </div>
 
-        {% if job.salary %}
-        <span class="tag tag-salary">{{ job.salary }}</span>
-        {% endif %}
+        <div class="status-item">
+            <span class="status-label">Type</span>
+            {% if job.job_type %}
+            <span class="tag tag-type">{{ job.job_type }}</span>
+            {% else %}
+            <span class="tag tag-unknown">Non specifie</span>
+            {% endif %}
+        </div>
 
+        <div class="status-item">
+            <span class="status-label">Salaire</span>
+            {% if job.salary %}
+            <span class="tag tag-salary">{{ job.salary }}</span>
+            {% else %}
+            <span class="tag tag-unknown">Non specifie</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="job-tags-extra">
         <span class="tag tag-source">{{ job.source }}</span>
-
-        {% if job.job_type %}
-        <span class="tag tag-type">{{ job.job_type }}</span>
-        {% endif %}
     </div>
 
     {% if job.description %}

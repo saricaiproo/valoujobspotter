@@ -447,15 +447,49 @@ a:hover {
 }
 
 /* ============================================
-   COLOR-CODED TAGS
+   3 KEY STATUSES ROW
    ============================================ */
 
-.job-tags {
+.job-statuses {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border-top: 1px solid var(--sand);
+  border-bottom: 1px solid var(--sand);
+  margin-top: 12px;
+}
+
+.status-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  text-align: center;
+}
+
+.status-item:not(:last-child) {
+  border-right: 1px solid var(--sand);
+}
+
+.status-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--camel);
+  font-weight: 600;
+}
+
+.job-tags-extra {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 12px 20px;
+  padding: 8px 20px 0;
 }
+
+/* ============================================
+   COLOR-CODED TAGS
+   ============================================ */
 
 .tag {
   display: inline-flex;
@@ -509,6 +543,16 @@ a:hover {
   background: #f3e5f5;
   color: #6a1b9a;
   border: 1px solid #e1bee7;
+}
+
+/* Unknown = dashed grey */
+.tag-unknown {
+  background: transparent;
+  color: var(--camel);
+  border: 1px dashed var(--sand);
+  font-weight: 400;
+  font-style: italic;
+  font-size: 0.75rem;
 }
 
 /* ============================================
@@ -777,8 +821,32 @@ a:hover {
   box-shadow: var(--shadow-soft);
 }
 
+.settings-section--highlight {
+  border-left: 4px solid var(--gold-leaf);
+}
+
 .settings-section h2 {
   margin-bottom: 20px;
+}
+
+.checkbox-label--subtle {
+  border: none !important;
+  padding-left: 0 !important;
+  font-size: 0.85rem;
+  color: var(--camel);
+}
+
+.checkbox-label--subtle input[type="checkbox"] {
+  display: inline-block !important;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--gold-leaf);
+}
+
+.checkbox-label--subtle:has(input:checked) {
+  background: transparent !important;
+  color: var(--walnut) !important;
+  border: none !important;
 }
 
 .section-desc {
@@ -1129,6 +1197,21 @@ a:hover {
   .btn-apply {
     width: 100%;
     text-align: center;
+  }
+
+  .job-statuses {
+    grid-template-columns: 1fr;
+  }
+
+  .status-item:not(:last-child) {
+    border-right: none;
+    border-bottom: 1px solid var(--sand);
+  }
+
+  .status-item {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 8px 16px;
   }
 }
 
@@ -1554,6 +1637,11 @@ a:hover {
   background: rgba(106, 27, 154, 0.15);
   color: #ce93d8;
   border-color: rgba(106, 27, 154, 0.3);
+}
+
+[data-theme="dark"] .tag-unknown {
+  color: var(--camel);
+  border-color: var(--sand);
 }
 
 [data-theme="dark"] .job-desc {
