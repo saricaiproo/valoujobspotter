@@ -50,6 +50,9 @@
             <form method="POST" action="{{ url_for('test_email') }}">
                 <button type="submit" class="btn btn-secondary">Tester le courriel</button>
             </form>
+            <form method="POST" action="{{ url_for('cleanup_db') }}">
+                <button type="submit" class="btn btn-secondary">Nettoyer les donnees</button>
+            </form>
         </div>
     </div>
 

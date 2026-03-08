@@ -16,84 +16,69 @@ class JobillicoScraper(BaseScraper):
 
     def parse_listing(self, soup):
         jobs = []
-        cards = soup.select('article.card')
+        cards = soup.select('article.card.card--clickable')
 
         logger.info(f"[Jobillico] {len(cards)} cartes trouvees dans le HTML")
 
-        for i, card in enumerate(cards):
+        for card in cards:
             try:
-                # Try multiple ways to find the title
-                title_el = card.select_one('h4.card__content__section__title a')
+                # Job title is in h2 > a (NOT h3 which is company)
+                title_el = card.select_one('h2 a')
                 if not title_el:
-                    title_el = card.select_one('h4.card__content__section__title')
-                if not title_el:
-                    title_el = card.select_one('a.gtm_searchEngine-featuredJob')
-                if not title_el:
-                    # Last resort: any heading with a link
-                    title_el = card.select_one('h3 a, h4 a, h5 a')
-
-                if not title_el:
-                    logger.debug(f"[Jobillico] Carte {i}: pas de titre trouve")
                     continue
 
                 title = title_el.get_text(strip=True)
                 if not title:
                     continue
 
-                # Get link - try multiple approaches
-                link = ''
-                if title_el.name == 'a':
-                    link = title_el.get('href', '')
-                if not link:
-                    link_el = card.select_one('a.gtm_searchEngine-featuredJob, a[href*="/offre-emploi"], a[href*="/emploi"]')
-                    if link_el:
-                        link = link_el.get('href', '')
-                if not link:
-                    link_el = card.select_one('a[href]')
-                    if link_el:
-                        link = link_el.get('href', '')
-
+                link = title_el.get('href', '')
                 if link and not link.startswith('http'):
                     link = self.BASE_URL + link
                 if not link:
-                    logger.debug(f"[Jobillico] Carte {i}: pas de lien pour '{title}'")
                     continue
 
-                # Company - try card header image alt, or nearby text
+                # Skip company profile links - we only want job postings
+                if '/voir-entreprise/' in link:
+                    continue
+
+                # Company name is in h3.h4 > a.companyLink or span.companyLink
                 company = ''
-                img_el = card.select_one('div.card__header img, img.card__header__media')
-                if img_el:
-                    company = img_el.get('alt', '').strip()
+                company_el = card.select_one('h3.h4 a.companyLink, h3.h4 span.companyLink, h3.h4')
+                if company_el:
+                    company = company_el.get_text(strip=True)
 
-                if not company:
-                    company_el = card.select_one('div.card__header a, div.card__content a')
-                    if company_el:
-                        company = company_el.get_text(strip=True)
-                        if company == title:
-                            company = ''
-
-                # Location - get all list items, take first that looks like a place
+                # Location: li with position icon, then sibling p
                 location = ''
-                list_items = card.select('li.list__item')
-                for li in list_items:
-                    text = li.get_text(strip=True)
-                    # Skip salary items and empty items
-                    if 'salary' in ' '.join(li.get('class', [])):
-                        continue
-                    if text and '$' not in text and len(text) < 100:
-                        location = text
-                        break
+                loc_icon = card.select_one('span.icon--information--position')
+                if loc_icon:
+                    loc_p = loc_icon.find_next_sibling('p')
+                    if loc_p:
+                        location = loc_p.get_text(strip=True)
+                if not location:
+                    # Fallback: check list items
+                    for li in card.select('li.list__item'):
+                        text = li.get_text(strip=True)
+                        if any(loc in text.lower() for loc in ['qc', 'québec', 'quebec', 'montréal', 'montreal']):
+                            location = text
+                            break
 
                 # Salary
                 salary = ''
-                salary_items = card.select('li.list__item--salary')
-                for s in salary_items:
-                    sal_text = s.get_text(strip=True)
-                    if sal_text:
-                        salary = sal_text
-                        break
+                salary_el = card.select_one('li.list__item--salary p')
+                if salary_el:
+                    salary = salary_el.get_text(strip=True)
+                    # Clean up excessive whitespace in salary
+                    salary = ' '.join(salary.split())
 
-                work_type = self._detect_work_type(title + ' ' + location + ' ' + salary)
+                # Job type (temps plein, etc.)
+                job_type = ''
+                clock_icon = card.select_one('span.icon--information--clock')
+                if clock_icon:
+                    type_p = clock_icon.find_next_sibling('p')
+                    if type_p:
+                        job_type = type_p.get_text(strip=True)
+
+                work_type = self._detect_work_type(title + ' ' + location + ' ' + job_type)
 
                 jobs.append({
                     'title': title,
@@ -102,10 +87,11 @@ class JobillicoScraper(BaseScraper):
                     'url': link,
                     'salary': salary,
                     'work_type': work_type,
+                    'job_type': job_type,
                     'description': '',
                 })
             except Exception as e:
-                logger.debug(f"[Jobillico] Erreur parsing carte {i}: {e}")
+                logger.debug(f"[Jobillico] Erreur parsing carte: {e}")
                 continue
 
         return jobs

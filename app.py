@@ -331,6 +331,18 @@ def debug_db():
     return f'<pre>{json.dumps(result, indent=2, ensure_ascii=False, default=str)}</pre>'
 
 
+@app.route('/cleanup-db', methods=['POST'])
+@login_required
+def cleanup_db():
+    """Remove bad Jobillico entries that scraped company profiles instead of jobs."""
+    conn = get_db()
+    _execute(conn, "DELETE FROM jobs WHERE url LIKE '%/voir-entreprise/%'")
+    _execute(conn, "DELETE FROM jobs WHERE company = 'Ajouter aux favoris'")
+    conn.close()
+    flash('Donnees nettoyees! Les mauvaises entrees Jobillico ont ete supprimees.', 'success')
+    return redirect(url_for('dashboard'))
+
+
 @app.route('/send-email', methods=['POST'])
 @login_required
 def trigger_email():
