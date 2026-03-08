@@ -11,16 +11,41 @@ class JobboomScraper(BaseScraper):
 
     def build_search_url(self, keyword, location='Montreal'):
         kw = quote_plus(keyword)
-        loc = quote_plus(location)
-        return f"{self.BASE_URL}/fr/offre-emploi?keywords={kw}&location={loc}"
+        # Try multiple URL patterns since Jobboom changes their structure
+        return f"{self.BASE_URL}/fr/recherche?keywords={kw}&location=Montreal%2C+QC"
 
     def parse_listing(self, soup):
         jobs = []
-        cards = soup.select('div.job-card, article.job-item, div.offer-item, div.search-result-item')
+        # Try multiple possible selectors
+        cards = soup.select('div.job-card, article.job-item, div.offer-item, div.search-result-item, div.card, article.card, li.result')
+
+        logger.info(f"[Jobboom] {len(cards)} cartes trouvees dans le HTML")
+
+        if not cards:
+            # Log what we do find to help debug
+            all_articles = soup.find_all('article')
+            all_divs_with_class = soup.find_all('div', class_=True)
+            logger.info(f"[Jobboom] Articles: {len(all_articles)}, Divs avec classe: {len(all_divs_with_class)}")
+            # Try to find any links that look like job postings
+            for a_tag in soup.find_all('a', href=True):
+                href = a_tag.get('href', '')
+                if '/offre-emploi/' in href or '/emploi/' in href or '/job/' in href:
+                    title = a_tag.get_text(strip=True)
+                    if title and len(title) > 5:
+                        link = href if href.startswith('http') else self.BASE_URL + href
+                        jobs.append({
+                            'title': title,
+                            'company': '',
+                            'location': 'Montreal',
+                            'url': link,
+                            'salary': '',
+                            'work_type': '',
+                            'description': '',
+                        })
 
         for card in cards:
             try:
-                title_el = card.select_one('a.job-title, h2 a, h3 a, a.offer-title')
+                title_el = card.select_one('a[href], h2 a, h3 a, h4 a')
                 if not title_el:
                     continue
 
@@ -28,22 +53,19 @@ class JobboomScraper(BaseScraper):
                 link = title_el.get('href', '')
                 if link and not link.startswith('http'):
                     link = self.BASE_URL + link
-                if not link:
+                if not link or not title:
                     continue
 
-                company_el = card.select_one('span.company, div.company-name, a.company')
+                company_el = card.select_one('span.company, div.company-name, a.company, p.company')
                 company = company_el.get_text(strip=True) if company_el else ''
 
-                location_el = card.select_one('span.location, div.location, span.city')
+                location_el = card.select_one('span.location, div.location, span.city, p.location')
                 location = location_el.get_text(strip=True) if location_el else ''
 
-                salary_el = card.select_one('span.salary, div.salary-range')
+                salary_el = card.select_one('span.salary, div.salary-range, p.salary')
                 salary = salary_el.get_text(strip=True) if salary_el else ''
 
-                desc_el = card.select_one('div.description, p.summary')
-                description = desc_el.get_text(strip=True) if desc_el else ''
-
-                work_type = self._detect_work_type(title + ' ' + description + ' ' + location)
+                work_type = self._detect_work_type(title + ' ' + location)
 
                 jobs.append({
                     'title': title,
@@ -52,7 +74,7 @@ class JobboomScraper(BaseScraper):
                     'url': link,
                     'salary': salary,
                     'work_type': work_type,
-                    'description': description[:500],
+                    'description': '',
                 })
             except Exception as e:
                 logger.debug(f"[Jobboom] Erreur parsing carte: {e}")
