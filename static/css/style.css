@@ -995,3 +995,120 @@ a:hover {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
+
+/* ============================================
+   THEME TOGGLE
+   ============================================ */
+
+.theme-toggle {
+  background: none;
+  border: 1px solid var(--sand);
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--walnut);
+  transition: var(--transition);
+}
+
+.theme-toggle:hover {
+  background: var(--linen);
+}
+
+.theme-icon-dark { display: none; }
+.theme-icon-light { display: inline; }
+
+[data-theme="dark"] .theme-icon-dark { display: inline; }
+[data-theme="dark"] .theme-icon-light { display: none; }
+
+.nav-right-mobile {
+  display: none;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 768px) {
+  .nav-links .theme-toggle { display: none; }
+  .nav-right-mobile { display: flex; }
+}
+
+/* ============================================
+   DARK MODE
+   ============================================ */
+
+[data-theme="dark"] {
+  --warm-white: #1A1714;
+  --linen: #23201B;
+  --sand: #342F28;
+  --camel: #8A7D6F;
+  --walnut: #D4C4B0;
+  --espresso: #EDE4D8;
+  --olive-mist: #7A8570;
+  --dried-rose: #A87E7B;
+  --terracotta: #D4956F;
+  --cream: #1E1B17;
+  --gold-leaf: #D4B85C;
+  --shadow-soft: 0 2px 16px rgba(0, 0, 0, 0.2);
+  --shadow-hover: 0 6px 24px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] body::before {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23C4AD94' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+[data-theme="dark"] .form-group input[type="text"],
+[data-theme="dark"] .form-group input[type="email"],
+[data-theme="dark"] .form-group input[type="password"],
+[data-theme="dark"] .form-group input[type="number"],
+[data-theme="dark"] .form-group input[type="url"],
+[data-theme="dark"] .form-group select,
+[data-theme="dark"] .add-form input,
+[data-theme="dark"] .location-item input,
+[data-theme="dark"] .filters-form select {
+  background: #2A2520;
+  color: var(--espresso);
+  border-color: var(--sand);
+}
+
+[data-theme="dark"] .navbar {
+  background: rgba(30, 27, 23, 0.92);
+}
+
+[data-theme="dark"] .nav-links {
+  background: rgba(30, 27, 23, 0.98);
+}
+
+[data-theme="dark"] .badge-source {
+  background: rgba(122, 133, 112, 0.2);
+  color: var(--olive-mist);
+}
+
+[data-theme="dark"] .badge-salary {
+  background: rgba(212, 184, 92, 0.12);
+  color: var(--gold-leaf);
+}
+
+[data-theme="dark"] .job-desc {
+  color: #9B8E82;
+}
+
+[data-theme="dark"] .checkbox-label:has(input:checked) {
+  background: var(--gold-leaf);
+  color: #1A1714;
+  border-color: var(--gold-leaf);
+}
+
+[data-theme="dark"] .btn-primary {
+  background: var(--gold-leaf);
+  color: #1A1714;
+}
+
+[data-theme="dark"] .btn-primary:hover {
+  background: #E0C75E;
+  color: #1A1714;
+}
+
+[data-theme="dark"] .login-page {
+  background: var(--warm-white);
+}

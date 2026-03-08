@@ -138,7 +138,55 @@ def get_active_keywords():
     return [row['keyword'] for row in rows]
 
 
+def _normalize(text):
+    """Normalize text for dedup comparison."""
+    if not text:
+        return ''
+    import re
+    text = text.lower().strip()
+    text = re.sub(r'[^a-z0-9àâäéèêëïîôùûüçœæ\s]', '', text)
+    text = re.sub(r'\s+', ' ', text)
+    return text
+
+
+def is_duplicate(job_data):
+    """Check if a job with similar title + company already exists."""
+    title = _normalize(job_data.get('title', ''))
+    company = _normalize(job_data.get('company', ''))
+    if not title:
+        return False
+
+    conn = get_db()
+    # Check by URL first (exact match)
+    row = conn.execute('SELECT id FROM jobs WHERE url = ?', (job_data['url'],)).fetchone()
+    if row:
+        conn.close()
+        return True
+
+    # Check by normalized title + company (fuzzy dedup across sources)
+    if company:
+        rows = conn.execute('SELECT title, company FROM jobs').fetchall()
+        for r in rows:
+            if _normalize(r['title']) == title and _normalize(r['company']) == company:
+                conn.close()
+                return True
+    else:
+        # No company info — match on title alone only if very specific
+        if len(title) > 20:
+            rows = conn.execute('SELECT title FROM jobs').fetchall()
+            for r in rows:
+                if _normalize(r['title']) == title:
+                    conn.close()
+                    return True
+
+    conn.close()
+    return False
+
+
 def insert_job(job_data):
+    if is_duplicate(job_data):
+        return False
+
     conn = get_db()
     try:
         conn.execute('''

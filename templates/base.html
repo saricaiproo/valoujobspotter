@@ -7,6 +7,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
 </head>
 <body>
     {% if session.get('logged_in') %}
@@ -18,11 +23,21 @@
                 <a href="{{ url_for('jobs_list') }}" class="{% if request.endpoint == 'jobs_list' %}active{% endif %}">Offres</a>
                 <a href="{{ url_for('favorites') }}" class="{% if request.endpoint == 'favorites' %}active{% endif %}">Favoris</a>
                 <a href="{{ url_for('settings') }}" class="{% if request.endpoint == 'settings' %}active{% endif %}">Parametres</a>
+                <button class="theme-toggle" onclick="toggleTheme()" title="Mode sombre">
+                    <span class="theme-icon-light">&#9790;</span>
+                    <span class="theme-icon-dark">&#9788;</span>
+                </button>
                 <a href="{{ url_for('logout') }}" class="nav-logout">Deconnexion</a>
             </div>
-            <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">
-                <span></span><span></span><span></span>
-            </button>
+            <div class="nav-right-mobile">
+                <button class="theme-toggle" onclick="toggleTheme()" title="Mode sombre">
+                    <span class="theme-icon-light">&#9790;</span>
+                    <span class="theme-icon-dark">&#9788;</span>
+                </button>
+                <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
         </div>
     </nav>
     {% endif %}
@@ -43,6 +58,15 @@
         <p>Valou Job Scout &mdash; Ta chercheuse d'emploi personnelle</p>
     </footer>
 
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        }
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>
