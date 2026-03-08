@@ -295,7 +295,31 @@ def trigger_email():
         send_daily_digest()
         flash('Courriel envoye avec succes!', 'success')
     except Exception as e:
+        logger.error(f"Erreur envoi courriel: {e}", exc_info=True)
         flash(f'Erreur envoi courriel: {e}', 'error')
+    return redirect(url_for('dashboard'))
+
+
+@app.route('/test-email', methods=['POST'])
+@login_required
+def test_email():
+    import smtplib
+    from email.mime.text import MIMEText
+    try:
+        msg = MIMEText('Ceci est un test de Valou Job Scout! Si tu vois ce message, le courriel fonctionne.', 'plain', 'utf-8')
+        msg['Subject'] = 'Valou Job Scout - Test'
+        msg['From'] = Config.SENDER_EMAIL
+        msg['To'] = Config.RECIPIENT_EMAIL
+
+        with smtplib.SMTP(Config.SMTP_SERVER, Config.SMTP_PORT) as server:
+            server.starttls()
+            server.login(Config.SMTP_LOGIN, Config.SMTP_PASSWORD)
+            server.send_message(msg)
+
+        flash('Courriel de test envoye! Verifie ta boite de reception.', 'success')
+    except Exception as e:
+        logger.error(f"Test email echoue: {e}", exc_info=True)
+        flash(f'Erreur: {e}', 'error')
     return redirect(url_for('dashboard'))
 
 
