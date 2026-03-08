@@ -307,51 +307,28 @@ def scrape_progress():
     return jsonify(scrape_status)
 
 
-@app.route('/debug-scrape')
+@app.route('/debug-db')
 @login_required
-def debug_scrape():
-    """Temporary debug route to see actual HTML structure of job sites."""
-    import requests
-    from bs4 import BeautifulSoup
-    results = {}
-
-    sites = {
-        'Jobillico': 'https://www.jobillico.com/recherche-emploi?skwd=social+media+manager&sloc=Montreal',
-        'Jobboom': 'https://www.jobboom.com/fr/recherche?keywords=social+media+manager&location=Montreal',
-        'Indeed RSS': 'https://ca.indeed.com/rss?q=social+media+manager&l=Montreal',
-        'LinkedIn': 'https://www.linkedin.com/jobs/search/?keywords=social+media+manager&location=Montreal',
-    }
-
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept-Language': 'fr-CA,fr;q=0.9,en;q=0.7',
-    }
-
-    for name, url in sites.items():
-        try:
-            resp = requests.get(url, headers=headers, timeout=15)
-            soup = BeautifulSoup(resp.text, 'lxml')
-
-            # Log all tags with class attributes to find job card patterns
-            all_classes = set()
-            for tag in soup.find_all(True, class_=True):
-                for cls in tag.get('class', []):
-                    if any(kw in cls.lower() for kw in ['job', 'offer', 'result', 'card', 'listing', 'item', 'emploi', 'offre', 'poste']):
-                        all_classes.add(f"{tag.name}.{cls}")
-
-            # Get first 500 chars of interesting elements
-            sample = ', '.join(sorted(all_classes)[:30])
-            results[name] = {
-                'status': resp.status_code,
-                'size': len(resp.text),
-                'job_classes': sample or 'Aucune classe trouvee',
-            }
-            logger.info(f"[DEBUG] {name} ({resp.status_code}): Classes trouvees: {sample}")
-        except Exception as e:
-            results[name] = {'status': 'error', 'error': str(e)}
-            logger.error(f"[DEBUG] {name}: {e}")
-
-    return f'<pre>{json.dumps(results, indent=2, ensure_ascii=False)}</pre>'
+def debug_db():
+    """Debug route to see raw job data in the database."""
+    conn = get_db()
+    rows = _fetchall(conn,
+        'SELECT id, title, company, url, location, source, work_type, salary FROM jobs ORDER BY id DESC LIMIT 15'
+    )
+    conn.close()
+    result = []
+    for r in rows:
+        result.append({
+            'id': r['id'],
+            'title': r['title'],
+            'company': r['company'],
+            'url': r['url'][:80] + '...' if r['url'] and len(r['url']) > 80 else r['url'],
+            'location': r['location'],
+            'source': r['source'],
+            'work_type': r['work_type'],
+            'salary': r['salary'],
+        })
+    return f'<pre>{json.dumps(result, indent=2, ensure_ascii=False, default=str)}</pre>'
 
 
 @app.route('/send-email', methods=['POST'])
