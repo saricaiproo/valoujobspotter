@@ -218,7 +218,53 @@ def is_duplicate(job_data):
     return False
 
 
+def is_relevant(job_data):
+    """Filter out jobs that don't match the target roles."""
+    title = (job_data.get('title', '') + ' ' + job_data.get('description', '')).lower()
+
+    # Must contain at least one relevant term
+    relevant_terms = [
+        'media', 'médias', 'social', 'marketing', 'communication',
+        'contenu', 'content', 'community', 'communauté', 'numerique',
+        'numérique', 'digital', 'marque', 'brand', 'coordonn',
+        'strateg', 'e-commerce', 'ecommerce', 'redact', 'rédact',
+        'web', 'seo', 'sem', 'publicite', 'publicité',
+    ]
+
+    # Reject if title contains these (clearly wrong field)
+    reject_terms = [
+        'développeur', 'developpeur', 'developer', 'ingénieur',
+        'ingenieur', 'engineer', 'game', 'jeu', 'jeux',
+        'infirmier', 'infirmière', 'nurse', 'médecin', 'mecanic',
+        'mécanicien', 'mecanicien', 'soudeur', 'welder', 'plumber',
+        'plombier', 'électricien', 'electricien', 'comptable',
+        'accountant', 'avocat', 'lawyer', 'chauffeur', 'driver',
+        'cuisinier', 'chef cuisinier', 'cook', 'serveur', 'serveuse',
+        'concierge', 'janitor', 'data scientist', 'data engineer',
+        'devops', 'sysadmin', 'backend', 'frontend', 'full stack',
+        'fullstack', 'qa tester', 'game test', 'architecte logiciel',
+        'software architect', 'machine learning', 'dentist', 'dentiste',
+        'pharmacien', 'pharmacist', 'vétérinaire', 'veterinaire',
+    ]
+
+    job_title = job_data.get('title', '').lower()
+
+    # Check reject terms first (in title only)
+    for term in reject_terms:
+        if term in job_title:
+            return False
+
+    # Check if any relevant term is present
+    for term in relevant_terms:
+        if term in title:
+            return True
+
+    return False
+
+
 def insert_job(job_data):
+    if not is_relevant(job_data):
+        return False
     if is_duplicate(job_data):
         return False
 

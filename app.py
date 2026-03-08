@@ -336,10 +336,20 @@ def debug_db():
 def cleanup_db():
     """Remove bad Jobillico entries that scraped company profiles instead of jobs."""
     conn = get_db()
-    _execute(conn, "DELETE FROM jobs WHERE url LIKE '%/voir-entreprise/%'")
+    _execute(conn, "DELETE FROM jobs WHERE url LIKE '%%/voir-entreprise/%%'")
     _execute(conn, "DELETE FROM jobs WHERE company = 'Ajouter aux favoris'")
+
+    # Remove irrelevant jobs (game dev, nursing, etc.)
+    from database import is_relevant, _fetchall as db_fetchall
+    all_jobs = db_fetchall(conn, 'SELECT id, title, description FROM jobs')
+    removed = 0
+    for job in all_jobs:
+        if not is_relevant({'title': job['title'], 'description': job.get('description', '')}):
+            _execute(conn, 'DELETE FROM jobs WHERE id = %s', (job['id'],))
+            removed += 1
+
     conn.close()
-    flash('Donnees nettoyees avec succes!', 'success')
+    flash(f'Donnees nettoyees! {removed} offre(s) non pertinente(s) supprimee(s).', 'success')
     return redirect(url_for('dashboard'))
 
 
