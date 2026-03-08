@@ -1,6 +1,7 @@
 import logging
 import requests
 from config import Config
+from scrapers.base import extract_highlights
 
 logger = logging.getLogger(__name__)
 
@@ -107,9 +108,10 @@ class AdzunaScraper:
                         'salary': salary,
                         'work_type': work_type,
                         'job_type': job_type,
-                        'description': description[:500] if description else '',
+                        'description': description[:800] if description else '',
                         'source': self.SOURCE_NAME,
                         'date_posted': item.get('created', ''),
+                        'highlights': extract_highlights(title + ' ' + description),
                     })
 
             except Exception as e:

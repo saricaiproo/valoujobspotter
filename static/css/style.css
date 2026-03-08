@@ -559,12 +559,35 @@ a:hover {
    JOB CARD BODY & FOOTER
    ============================================ */
 
+.job-desc-section {
+  padding: 10px 20px 0;
+}
+
 .job-desc {
-  padding: 0 20px;
   margin: 0;
   font-size: 0.88rem;
   color: #6d6055;
   line-height: 1.65;
+}
+
+/* Skill highlights */
+.job-highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 20px 0;
+}
+
+.highlight-chip {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(193, 123, 94, 0.1);
+  color: var(--terracotta);
+  border: 1px solid rgba(193, 123, 94, 0.2);
+  letter-spacing: 0.01em;
 }
 
 .job-card-footer {
@@ -578,11 +601,25 @@ a:hover {
   gap: 8px;
 }
 
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .job-date {
   font-size: 0.8rem;
   color: var(--camel);
   font-style: italic;
   margin: 0;
+}
+
+/* Relative time in header */
+.job-time {
+  font-size: 0.8rem;
+  color: var(--camel);
+  font-style: italic;
+  margin-left: auto;
 }
 
 .btn-apply {
@@ -1199,6 +1236,14 @@ a:hover {
     text-align: center;
   }
 
+  .job-desc-section {
+    padding: 10px 16px 0;
+  }
+
+  .job-highlights {
+    padding: 8px 16px 0;
+  }
+
   .job-statuses {
     grid-template-columns: 1fr;
   }
@@ -1646,6 +1691,12 @@ a:hover {
 
 [data-theme="dark"] .job-desc {
   color: #9B8E82;
+}
+
+[data-theme="dark"] .highlight-chip {
+  background: rgba(212, 149, 111, 0.12);
+  color: var(--terracotta);
+  border-color: rgba(212, 149, 111, 0.25);
 }
 
 [data-theme="dark"] .btn-apply {

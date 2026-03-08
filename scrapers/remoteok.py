@@ -1,5 +1,6 @@
 import logging
 import requests
+from scrapers.base import extract_highlights
 
 logger = logging.getLogger(__name__)
 
@@ -76,9 +77,10 @@ class RemoteOKScraper:
                         'salary': salary,
                         'work_type': 'teletravail',
                         'job_type': ', '.join(tags[:3]) if tags else '',
-                        'description': description[:500] if description else '',
+                        'description': description[:800] if description else '',
                         'source': self.SOURCE_NAME,
                         'date_posted': item.get('date', ''),
+                        'highlights': extract_highlights(title + ' ' + description),
                     })
 
             except Exception as e:

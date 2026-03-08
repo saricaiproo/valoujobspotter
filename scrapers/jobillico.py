@@ -96,6 +96,42 @@ class JobillicoScraper(BaseScraper):
 
         return jobs
 
+    def parse_detail(self, soup, job):
+        """Extract description, salary, and job type from Jobillico detail page."""
+        import re
+
+        # Description
+        desc_el = soup.select_one(
+            'div.job-description, div[class*="description"], '
+            'div.offer__content, section.offer__description'
+        )
+        if desc_el:
+            desc = desc_el.get_text(' ', strip=True)
+            desc = re.sub(r'\s+', ' ', desc)
+            job['description'] = desc[:800]
+
+        # Try to get salary from detail page if missing
+        if not job.get('salary'):
+            page_text = soup.get_text(' ', strip=True)
+            sal_match = re.search(
+                r'(\d[\d\s]*[\d]\s*\$|\$\s*\d[\d\s,\.]*[\d])\s*(?:[-àa]\s*(\d[\d\s]*[\d]\s*\$|\$\s*\d[\d\s,\.]*[\d]))?',
+                page_text
+            )
+            if sal_match:
+                job['salary'] = sal_match.group(0).strip()
+
+        # Try to get job type from detail page
+        if not job.get('job_type'):
+            info_items = soup.select('li.list__item, div.offer__info-item')
+            for item in info_items:
+                text = item.get_text(strip=True).lower()
+                normalized = self.normalize_job_type(text)
+                if normalized and normalized != text:
+                    job['job_type'] = normalized
+                    break
+
+        return job
+
     def _detect_work_type(self, text):
         text_lower = text.lower()
         if 'télétravail' in text_lower or 'remote' in text_lower or 'teletravail' in text_lower:

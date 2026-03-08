@@ -1,11 +1,13 @@
 import json
 import logging
 import threading
+from datetime import datetime, timezone
 from functools import wraps
 from math import ceil
 
 import bcrypt
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from markupsafe import Markup
 
 from config import Config
 from database import (
@@ -24,6 +26,57 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = Config.SECRET_KEY
+
+
+# ============================================
+# JINJA FILTERS
+# ============================================
+
+@app.template_filter('relative_date')
+def relative_date_filter(dt):
+    """Convert datetime to relative French string like 'Il y a 2 jours'."""
+    if not dt:
+        return ''
+    now = datetime.now(dt.tzinfo) if dt.tzinfo else datetime.now()
+    diff = now - dt
+    seconds = int(diff.total_seconds())
+    if seconds < 60:
+        return "A l'instant"
+    minutes = seconds // 60
+    if minutes < 60:
+        return f"Il y a {minutes} min"
+    hours = minutes // 60
+    if hours < 24:
+        return f"Il y a {hours}h"
+    days = hours // 24
+    if days == 1:
+        return "Hier"
+    if days < 7:
+        return f"Il y a {days} jours"
+    weeks = days // 7
+    if weeks == 1:
+        return "Il y a 1 semaine"
+    if weeks < 5:
+        return f"Il y a {weeks} semaines"
+    months = days // 30
+    if months == 1:
+        return "Il y a 1 mois"
+    if months < 12:
+        return f"Il y a {months} mois"
+    return dt.strftime('%d %b %Y')
+
+
+@app.template_filter('parse_highlights')
+def parse_highlights_filter(value):
+    """Parse highlights JSON string to list."""
+    if not value:
+        return []
+    if isinstance(value, list):
+        return value
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return []
 
 # Scrape status tracking
 scrape_status = {'running': False, 'total_new': 0, 'message': ''}

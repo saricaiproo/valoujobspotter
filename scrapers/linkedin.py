@@ -63,12 +63,33 @@ class LinkedInScraper(BaseScraper):
 
         return jobs
 
-    def _detect_work_type(self, text):
-        text_lower = text.lower()
-        if 'remote' in text_lower or 'télétravail' in text_lower or 'teletravail' in text_lower:
-            return 'teletravail'
-        elif 'hybrid' in text_lower or 'hybride' in text_lower:
-            return 'hybride'
-        elif 'on-site' in text_lower or 'présentiel' in text_lower:
-            return 'presentiel'
-        return ''
+    def parse_detail(self, soup, job):
+        """Extract description, work type, and job type from LinkedIn detail page."""
+        # Description
+        desc_el = soup.select_one(
+            'div.description__text, div.show-more-less-html__markup, '
+            'section.description div, div[class*="description"]'
+        )
+        if desc_el:
+            desc = desc_el.get_text(' ', strip=True)
+            import re
+            desc = re.sub(r'\s+', ' ', desc)
+            job['description'] = desc[:800]
+
+        # Work type from criteria list
+        criteria = soup.select('li.description__job-criteria-item')
+        for item in criteria:
+            label_el = item.select_one('h3')
+            value_el = item.select_one('span')
+            if not label_el or not value_el:
+                continue
+            label = label_el.get_text(strip=True).lower()
+            value = value_el.get_text(strip=True)
+
+            if 'type' in label and 'lieu' not in label:
+                job['job_type'] = self.normalize_job_type(value)
+            if 'lieu' in label or 'workplace' in label:
+                if not job.get('work_type'):
+                    job['work_type'] = self._detect_work_type(value)
+
+        return job

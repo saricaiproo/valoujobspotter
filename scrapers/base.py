@@ -1,3 +1,4 @@
+import re
 import time
 import random
 import logging
@@ -15,6 +16,86 @@ USER_AGENTS = [
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0',
 ]
+
+# Skills/requirements to look for in job descriptions
+SKILL_PATTERNS = [
+    # Tools & platforms
+    (r'\b(instagram)\b', 'Instagram'),
+    (r'\b(facebook)\b', 'Facebook'),
+    (r'\b(tiktok)\b', 'TikTok'),
+    (r'\b(linkedin)\b', 'LinkedIn'),
+    (r'\b(twitter|x\.com)\b', 'Twitter/X'),
+    (r'\b(pinterest)\b', 'Pinterest'),
+    (r'\b(youtube)\b', 'YouTube'),
+    (r'\b(hootsuite)\b', 'Hootsuite'),
+    (r'\b(sprout\s*social)\b', 'Sprout Social'),
+    (r'\b(buffer)\b', 'Buffer'),
+    (r'\b(canva)\b', 'Canva'),
+    (r'\b(photoshop)\b', 'Photoshop'),
+    (r'\b(illustrator)\b', 'Illustrator'),
+    (r'\b(adobe\s*(creative\s*)?suite|adobe\s*cc)\b', 'Adobe Suite'),
+    (r'\b(figma)\b', 'Figma'),
+    (r'\b(google\s*analytics|ga4)\b', 'Google Analytics'),
+    (r'\b(google\s*ads)\b', 'Google Ads'),
+    (r'\b(meta\s*ads|facebook\s*ads)\b', 'Meta Ads'),
+    (r'\b(mailchimp)\b', 'Mailchimp'),
+    (r'\b(hubspot)\b', 'HubSpot'),
+    (r'\b(wordpress)\b', 'WordPress'),
+    (r'\b(shopify)\b', 'Shopify'),
+    (r'\b(seo)\b', 'SEO'),
+    (r'\b(sem)\b', 'SEM'),
+    (r'\b(crm)\b', 'CRM'),
+    (r'\b(html|css)\b', 'HTML/CSS'),
+    (r'\b(excel)\b', 'Excel'),
+    (r'\b(powerpoint)\b', 'PowerPoint'),
+    (r'\b(salesforce)\b', 'Salesforce'),
+    # Languages
+    (r'\b(bilingue|bilingual)\b', 'Bilingue'),
+    (r'\b(fran[cç]ais\s*(et|and|\/)\s*anglais|anglais\s*(et|and|\/)\s*fran[cç]ais)\b', 'Bilingue'),
+    (r'\b(trilingue|trilingual)\b', 'Trilingue'),
+    # Experience
+    (r'\b(\d+)\s*[\-\+à]\s*(\d+)?\s*an(?:s|nées?)?\s*(?:d\'?expérience|d\'?experience|experience)', None),  # handled specially
+    (r'\b(\d+)\s*(?:ans?|years?)\s*(?:d\'?expérience|d\'?experience|experience|\+)', None),
+    # Qualifications
+    (r'\b(baccalaur[ée]at|bachelor|bac)\b', 'BAC'),
+    (r'\b(ma[iî]trise|master|mba)\b', 'Maitrise'),
+    (r'\b(diplôme|diplome|dec|aec)\b', 'Diplome'),
+]
+
+# Experience patterns - extracted separately for better formatting
+EXP_PATTERNS = [
+    (r'(\d+)\s*[\-à]\s*(\d+)\s*an(?:s|nées?)', lambda m: f"{m.group(1)}-{m.group(2)} ans exp."),
+    (r'(\d+)\s*\+?\s*an(?:s|nées?)\s*(?:d\'?exp[ée]rience|d\'?experience|experience)', lambda m: f"{m.group(1)}+ ans exp."),
+    (r'(\d+)\s*(?:years?)\s*(?:of\s*)?experience', lambda m: f"{m.group(1)}+ ans exp."),
+]
+
+
+def extract_highlights(text):
+    """Extract key skills, tools, and requirements from job text."""
+    if not text:
+        return []
+
+    text_lower = text.lower()
+    highlights = []
+    seen = set()
+
+    # Extract experience requirements first
+    for pattern, formatter in EXP_PATTERNS:
+        match = re.search(pattern, text_lower)
+        if match and 'exp' not in seen:
+            highlights.append(formatter(match))
+            seen.add('exp')
+            break
+
+    # Extract skills/tools
+    for pattern, label in SKILL_PATTERNS:
+        if label is None:
+            continue  # skip experience patterns already handled
+        if label not in seen and re.search(pattern, text_lower):
+            highlights.append(label)
+            seen.add(label)
+
+    return highlights[:8]  # max 8 highlights per job
 
 
 class BaseScraper:
@@ -50,6 +131,11 @@ class BaseScraper:
     def parse_listing(self, soup):
         raise NotImplementedError
 
+    def parse_detail(self, soup, job):
+        """Override in subclass to extract extra info from detail page.
+        Should return updated job dict with enriched fields."""
+        return job
+
     @staticmethod
     def normalize_job_type(text):
         """Normalize job type to standard values."""
@@ -67,6 +153,62 @@ class BaseScraper:
         if any(w in t for w in ['pigiste', 'freelance', 'autonome']):
             return 'Pigiste'
         return text.strip()
+
+    @staticmethod
+    def _detect_work_type(text):
+        text_lower = text.lower()
+        if 'télétravail' in text_lower or 'remote' in text_lower or 'teletravail' in text_lower:
+            return 'teletravail'
+        elif 'hybride' in text_lower or 'hybrid' in text_lower:
+            return 'hybride'
+        elif 'présentiel' in text_lower or 'sur place' in text_lower or 'on-site' in text_lower:
+            return 'presentiel'
+        return ''
+
+    def enrich_job(self, job):
+        """Fetch detail page and extract additional info."""
+        url = job.get('url', '')
+        if not url:
+            return job
+
+        try:
+            soup = self._get_soup(url)
+            if soup is None:
+                return job
+
+            # Let subclass extract specific fields
+            job = self.parse_detail(soup, job)
+
+            # Extract full page text for skill detection
+            page_text = soup.get_text(' ', strip=True)
+
+            # If description is still empty, try to get it from the page
+            if not job.get('description'):
+                # Look for common description containers
+                desc_el = soup.select_one(
+                    'div.description, div.job-description, section.description, '
+                    'div[class*="description"], div[class*="content"], article'
+                )
+                if desc_el:
+                    desc_text = desc_el.get_text(' ', strip=True)
+                    # Clean up
+                    desc_text = re.sub(r'\s+', ' ', desc_text)
+                    job['description'] = desc_text[:800]
+
+            # Extract highlights from description + full page
+            full_text = (job.get('description', '') + ' ' + page_text)
+            job['highlights'] = extract_highlights(full_text)
+
+            # Try to fill missing fields from detail page
+            if not job.get('work_type'):
+                job['work_type'] = self._detect_work_type(page_text)
+            if not job.get('job_type'):
+                job['job_type'] = self.normalize_job_type(page_text[:500])
+
+        except Exception as e:
+            logger.debug(f"[{self.SOURCE_NAME}] Erreur enrichissement {url}: {e}")
+
+        return job
 
     def scrape(self, keywords, location='Montreal'):
         all_jobs = []

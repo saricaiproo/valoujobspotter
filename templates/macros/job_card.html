@@ -24,6 +24,7 @@
             {% if job.location %}
             <span class="job-location">{{ job.location }}</span>
             {% endif %}
+            <span class="job-time">{{ job.date_scraped|relative_date }}</span>
         </div>
     </div>
 
@@ -61,16 +62,26 @@
         </div>
     </div>
 
-    <div class="job-tags-extra">
-        <span class="tag tag-source">{{ job.source }}</span>
-    </div>
-
     {% if job.description %}
-    <p class="job-desc">{{ job.description[:300] }}{% if job.description|length > 300 %}...{% endif %}</p>
+    <div class="job-desc-section">
+        <p class="job-desc">{{ job.description[:400] }}{% if job.description|length > 400 %}...{% endif %}</p>
+    </div>
+    {% endif %}
+
+    <!-- Skill highlights -->
+    {% set highlights = job.highlights|parse_highlights %}
+    {% if highlights %}
+    <div class="job-highlights">
+        {% for h in highlights %}
+        <span class="highlight-chip">{{ h }}</span>
+        {% endfor %}
+    </div>
     {% endif %}
 
     <div class="job-card-footer">
-        <span class="job-date">{{ job.date_scraped.strftime('%d %b %Y') if job.date_scraped else '' }}</span>
+        <div class="footer-left">
+            <span class="tag tag-source">{{ job.source }}</span>
+        </div>
         <a href="{{ job.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-apply">Voir l'offre &rarr;</a>
     </div>
 </div>

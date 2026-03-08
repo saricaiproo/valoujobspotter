@@ -54,9 +54,16 @@ def init_db():
             date_scraped TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             emailed BOOLEAN DEFAULT FALSE,
             favorite BOOLEAN DEFAULT FALSE,
-            hidden BOOLEAN DEFAULT FALSE
+            hidden BOOLEAN DEFAULT FALSE,
+            highlights TEXT DEFAULT '[]'
         )
     ''')
+
+    # Add highlights column if it doesn't exist (migration for existing DBs)
+    try:
+        cur.execute("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS highlights TEXT DEFAULT '[]'")
+    except Exception:
+        conn.rollback()
 
     cur.execute('''
         CREATE TABLE IF NOT EXISTS search_keywords (
@@ -270,12 +277,13 @@ def insert_job(job_data):
 
     conn = get_db()
     try:
+        highlights = json.dumps(job_data.get('highlights', []))
         with conn.cursor() as cur:
             cur.execute('''
                 INSERT INTO jobs
                 (title, company, location, url, salary, work_type, job_type,
-                 description, source, date_posted)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 description, source, date_posted, highlights)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (url) DO NOTHING
             ''', (
                 job_data.get('title'),
@@ -288,6 +296,7 @@ def insert_job(job_data):
                 job_data.get('description'),
                 job_data['source'],
                 job_data.get('date_posted'),
+                highlights,
             ))
         conn.commit()
         return cur.rowcount > 0
