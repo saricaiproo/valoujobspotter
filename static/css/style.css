@@ -997,6 +997,116 @@ a:hover {
 }
 
 /* ============================================
+   POLISHED JOB CARD ELEMENTS
+   ============================================ */
+
+.job-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.job-title a {
+  color: var(--espresso);
+  transition: var(--transition);
+}
+
+.job-title a:hover {
+  color: var(--terracotta);
+}
+
+.job-info-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 6px;
+}
+
+.job-company {
+  display: inline;
+  font-weight: 500;
+  color: var(--walnut);
+  font-size: 0.9rem;
+}
+
+.job-location {
+  color: var(--camel);
+  font-size: 0.85rem;
+}
+
+.job-location::before {
+  content: '\25CB';
+  display: inline-block;
+  margin-right: 4px;
+  font-size: 0.55rem;
+  vertical-align: middle;
+  opacity: 0.7;
+}
+
+/* Star / X action buttons vertical centering */
+.job-card-header {
+  align-items: center;
+}
+
+.job-actions {
+  align-items: center;
+}
+
+/* Job card footer (date + source) */
+.job-card-footer {
+  border-top: 1px solid var(--sand);
+  padding-top: 10px;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--camel);
+}
+
+.job-card-footer .job-date {
+  margin-top: 0;
+}
+
+/* Mobile adjustments for polished job cards */
+@media (max-width: 768px) {
+  .job-info-row {
+    gap: 8px;
+  }
+
+  .badge {
+    font-size: 0.72rem;
+    padding: 3px 10px;
+  }
+
+  .job-title {
+    font-size: 0.98rem;
+  }
+
+  .job-card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .job-info-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .badge {
+    font-size: 0.72rem;
+    padding: 3px 10px;
+  }
+}
+
+/* ============================================
    LOADING OVERLAY + PIXEL BUG
    ============================================ */
 

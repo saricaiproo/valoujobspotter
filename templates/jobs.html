@@ -35,14 +35,14 @@
             </div>
         </div>
         <div class="job-meta">
-            <span class="company">{{ job.company or 'Non specifie' }}</span>
-            <span class="location">{{ job.location }}</span>
+            <strong class="company">{{ job.company or 'Non specifie' }}</strong>
+            <span class="location">{{ job.location or '' }}</span>
         </div>
         <div class="job-badges">
+            <span class="badge badge-source">{{ job.source }}</span>
             {% if job.work_type %}
             <span class="badge">{{ job.work_type|replace('teletravail', 'Teletravail')|replace('hybride', 'Hybride')|replace('presentiel', 'Presentiel') }}</span>
             {% endif %}
-            <span class="badge badge-source">{{ job.source }}</span>
             {% if job.salary %}
             <span class="badge badge-salary">{{ job.salary }}</span>
             {% endif %}
@@ -50,7 +50,7 @@
         {% if job.description %}
         <p class="job-desc">{{ job.description[:300] }}{% if job.description|length > 300 %}...{% endif %}</p>
         {% endif %}
-        <div class="job-date">Trouve le {{ job.date_scraped[:10] if job.date_scraped else '' }}</div>
+        <div class="job-date">Trouve le {{ job.date_scraped.strftime('%Y-%m-%d') if job.date_scraped else '' }}</div>
     </div>
     {% endfor %}
 

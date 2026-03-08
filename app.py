@@ -87,7 +87,6 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    from database import _fetchall
     stats = get_job_stats()
     conn = get_db()
     recent_jobs = _fetchall(conn,
