@@ -33,10 +33,11 @@ def run_all_scrapers(max_keywords=None):
             scraper = ScraperClass()
             jobs = scraper.scrape(keywords)
 
-            # Enrich jobs with detail pages (only for scrapers that support it)
+            # Enrich jobs with detail pages (for scrapers that support it)
             enriched = 0
+            new_for_source = 0
             for job in jobs:
-                # Only enrich if missing key info and scraper supports it
+                # Enrich if missing key info and we haven't hit the limit
                 if (enriched < MAX_DETAIL_PAGES
                         and hasattr(scraper, 'enrich_job')
                         and _needs_enrichment(job)):
@@ -46,16 +47,21 @@ def run_all_scrapers(max_keywords=None):
                     except Exception as e:
                         logger.debug(f"Enrichissement echoue: {e}")
 
-                # Extract highlights from whatever description we have
-                if not job.get('highlights') and job.get('description'):
-                    job['highlights'] = extract_highlights(
-                        job.get('title', '') + ' ' + job.get('description', '')
-                    )
+                # Extract highlights from whatever text we have
+                if not job.get('highlights'):
+                    text = ' '.join(filter(None, [
+                        job.get('title', ''),
+                        job.get('description', ''),
+                        job.get('company', ''),
+                    ]))
+                    if text.strip():
+                        job['highlights'] = extract_highlights(text)
 
                 if insert_job(job):
+                    new_for_source += 1
                     total_new += 1
 
-            logger.info(f"--- {ScraperClass.SOURCE_NAME}: {total_new} nouvelles, {enriched} enrichies ---")
+            logger.info(f"--- {ScraperClass.SOURCE_NAME}: {new_for_source} nouvelles, {enriched} enrichies ---")
         except Exception as e:
             logger.error(f"Erreur scraper {ScraperClass.SOURCE_NAME}: {e}", exc_info=True)
             continue
@@ -66,16 +72,16 @@ def run_all_scrapers(max_keywords=None):
 
 def _needs_enrichment(job):
     """Check if job is missing key info that detail page could fill."""
-    missing = 0
+    # Enrich if missing ANY of the 3 key statuses or description
     if not job.get('description'):
-        missing += 1
-    if not job.get('salary'):
-        missing += 1
+        return True
     if not job.get('work_type'):
-        missing += 1
+        return True
     if not job.get('job_type'):
-        missing += 1
-    return missing >= 2  # enrich if missing 2+ fields
+        return True
+    if not job.get('salary'):
+        return True
+    return False
 
 
 def init_scheduler():

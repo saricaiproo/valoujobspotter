@@ -45,15 +45,31 @@ class LinkedInScraper(BaseScraper):
                 date_el = card.select_one('time')
                 date_posted = date_el.get('datetime', '') if date_el else ''
 
-                work_type = self._detect_work_type(title + ' ' + location)
+                # Get ALL text from card for better detection
+                card_text = card.get_text(' ', strip=True)
+
+                # Detect work type, job type, salary from full card text
+                work_type = self._detect_work_type(card_text)
+                job_type = self.detect_job_type(card_text)
+                salary = self.detect_salary(card_text)
+
+                # Also check metadata/badges
+                badges = card.select('span.result-benefits__text, li.result-benefits__text')
+                for badge in badges:
+                    badge_text = badge.get_text(strip=True)
+                    if not work_type:
+                        work_type = self._detect_work_type(badge_text)
+                    if not salary:
+                        salary = self.detect_salary(badge_text)
 
                 jobs.append({
                     'title': title,
                     'company': company,
                     'location': location,
                     'url': link,
-                    'salary': '',
+                    'salary': salary,
                     'work_type': work_type,
+                    'job_type': job_type,
                     'date_posted': date_posted,
                     'description': '',
                 })
@@ -65,6 +81,8 @@ class LinkedInScraper(BaseScraper):
 
     def parse_detail(self, soup, job):
         """Extract description, work type, and job type from LinkedIn detail page."""
+        import re
+
         # Description
         desc_el = soup.select_one(
             'div.description__text, div.show-more-less-html__markup, '
@@ -72,7 +90,6 @@ class LinkedInScraper(BaseScraper):
         )
         if desc_el:
             desc = desc_el.get_text(' ', strip=True)
-            import re
             desc = re.sub(r'\s+', ' ', desc)
             job['description'] = desc[:800]
 
@@ -91,5 +108,14 @@ class LinkedInScraper(BaseScraper):
             if 'lieu' in label or 'workplace' in label:
                 if not job.get('work_type'):
                     job['work_type'] = self._detect_work_type(value)
+
+        # Detect from full page text as fallback
+        page_text = soup.get_text(' ', strip=True)
+        if not job.get('work_type'):
+            job['work_type'] = self._detect_work_type(page_text)
+        if not job.get('job_type'):
+            job['job_type'] = self.detect_job_type(page_text)
+        if not job.get('salary'):
+            job['salary'] = self.detect_salary(page_text)
 
         return job

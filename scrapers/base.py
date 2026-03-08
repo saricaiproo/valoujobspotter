@@ -157,12 +157,68 @@ class BaseScraper:
     @staticmethod
     def _detect_work_type(text):
         text_lower = text.lower()
-        if 'télétravail' in text_lower or 'remote' in text_lower or 'teletravail' in text_lower:
+        if any(w in text_lower for w in [
+            'télétravail', 'teletravail', 'remote', 'à distance',
+            'a distance', 'travail à domicile', 'work from home', 'wfh',
+            '100% remote', '100 % remote', 'fully remote',
+        ]):
             return 'teletravail'
-        elif 'hybride' in text_lower or 'hybrid' in text_lower:
+        elif any(w in text_lower for w in [
+            'hybride', 'hybrid', 'mode mixte', 'flexible',
+            'teletravail partiel', 'télétravail partiel',
+            'partially remote', '2 jours', '3 jours',
+        ]):
             return 'hybride'
-        elif 'présentiel' in text_lower or 'sur place' in text_lower or 'on-site' in text_lower:
+        elif any(w in text_lower for w in [
+            'présentiel', 'presentiel', 'sur place', 'on-site',
+            'onsite', 'on site', 'en personne', 'au bureau', 'in office',
+        ]):
             return 'presentiel'
+        return ''
+
+    @staticmethod
+    def detect_job_type(text):
+        """Detect job type from any text (title, description, card text)."""
+        text_lower = text.lower()
+        if any(w in text_lower for w in [
+            'temps plein', 'full time', 'full-time', 'permanent',
+            'temps complet', 'regulier', 'régulier', 'poste permanent',
+        ]):
+            return 'Temps plein'
+        if any(w in text_lower for w in [
+            'temps partiel', 'part time', 'part-time',
+        ]):
+            return 'Temps partiel'
+        if any(w in text_lower for w in [
+            'contrat', 'contract', 'contractuel', 'temporaire', 'terme',
+            'durée déterminée', 'duree determinee',
+        ]):
+            return 'Contrat'
+        if any(w in text_lower for w in ['stage', 'intern', 'stagiaire']):
+            return 'Stage'
+        if any(w in text_lower for w in ['pigiste', 'freelance', 'autonome']):
+            return 'Pigiste'
+        return ''
+
+    @staticmethod
+    def detect_salary(text):
+        """Try to extract salary from text."""
+        patterns = [
+            # $50,000 - $60,000 or $50 000 - $60 000
+            r'(\$\s*\d[\d\s,\.]*\s*[-àa]\s*\$?\s*\d[\d\s,\.]*)',
+            # 50 000$ - 60 000$
+            r'(\d[\d\s]*\d\s*\$\s*[-àa]\s*\d[\d\s]*\d\s*\$)',
+            # $50,000+ or $50K+
+            r'(\$\s*\d[\d,\.]*\s*[kK]?\s*\+)',
+            # 25$/h or 25$/heure
+            r'(\d+[\.,]?\d*\s*\$\s*/\s*h(?:eure)?)',
+            # $25/h
+            r'(\$\s*\d+[\.,]?\d*\s*/\s*h(?:our|eure)?)',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, text)
+            if match:
+                return ' '.join(match.group(1).split())
         return ''
 
     def enrich_job(self, job):

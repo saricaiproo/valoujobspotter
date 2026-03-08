@@ -1,4 +1,5 @@
 import logging
+import re
 from urllib.parse import quote_plus
 from scrapers.base import BaseScraper
 
@@ -55,7 +56,6 @@ class JobillicoScraper(BaseScraper):
                     if loc_p:
                         location = loc_p.get_text(strip=True)
                 if not location:
-                    # Fallback: check list items
                     for li in card.select('li.list__item'):
                         text = li.get_text(strip=True)
                         if any(loc in text.lower() for loc in ['qc', 'québec', 'quebec', 'montréal', 'montreal']):
@@ -67,7 +67,6 @@ class JobillicoScraper(BaseScraper):
                 salary_el = card.select_one('li.list__item--salary p')
                 if salary_el:
                     salary = salary_el.get_text(strip=True)
-                    # Clean up excessive whitespace in salary
                     salary = ' '.join(salary.split())
 
                 # Job type (temps plein, etc.)
@@ -78,7 +77,16 @@ class JobillicoScraper(BaseScraper):
                     if type_p:
                         job_type = type_p.get_text(strip=True)
 
-                work_type = self._detect_work_type(title + ' ' + location + ' ' + job_type)
+                # Get ALL card text for better detection
+                card_text = card.get_text(' ', strip=True)
+
+                work_type = self._detect_work_type(card_text)
+
+                # Fallback detection from full card text
+                if not job_type:
+                    job_type = self.detect_job_type(card_text)
+                if not salary:
+                    salary = self.detect_salary(card_text)
 
                 jobs.append({
                     'title': title,
@@ -98,8 +106,6 @@ class JobillicoScraper(BaseScraper):
 
     def parse_detail(self, soup, job):
         """Extract description, salary, and job type from Jobillico detail page."""
-        import re
-
         # Description
         desc_el = soup.select_one(
             'div.job-description, div[class*="description"], '
@@ -110,34 +116,14 @@ class JobillicoScraper(BaseScraper):
             desc = re.sub(r'\s+', ' ', desc)
             job['description'] = desc[:800]
 
-        # Try to get salary from detail page if missing
-        if not job.get('salary'):
-            page_text = soup.get_text(' ', strip=True)
-            sal_match = re.search(
-                r'(\d[\d\s]*[\d]\s*\$|\$\s*\d[\d\s,\.]*[\d])\s*(?:[-àa]\s*(\d[\d\s]*[\d]\s*\$|\$\s*\d[\d\s,\.]*[\d]))?',
-                page_text
-            )
-            if sal_match:
-                job['salary'] = sal_match.group(0).strip()
+        page_text = soup.get_text(' ', strip=True)
 
-        # Try to get job type from detail page
+        # Fill missing fields from detail page
+        if not job.get('salary'):
+            job['salary'] = self.detect_salary(page_text)
         if not job.get('job_type'):
-            info_items = soup.select('li.list__item, div.offer__info-item')
-            for item in info_items:
-                text = item.get_text(strip=True).lower()
-                normalized = self.normalize_job_type(text)
-                if normalized and normalized != text:
-                    job['job_type'] = normalized
-                    break
+            job['job_type'] = self.detect_job_type(page_text)
+        if not job.get('work_type'):
+            job['work_type'] = self._detect_work_type(page_text)
 
         return job
-
-    def _detect_work_type(self, text):
-        text_lower = text.lower()
-        if 'télétravail' in text_lower or 'remote' in text_lower or 'teletravail' in text_lower:
-            return 'teletravail'
-        elif 'hybride' in text_lower or 'hybrid' in text_lower:
-            return 'hybride'
-        elif 'présentiel' in text_lower or 'sur place' in text_lower:
-            return 'presentiel'
-        return ''

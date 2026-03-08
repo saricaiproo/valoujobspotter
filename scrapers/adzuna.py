@@ -21,6 +21,19 @@ class AdzunaScraper:
         return ''
 
     @staticmethod
+    def _detect_job_type(text):
+        text_lower = text.lower()
+        if any(w in text_lower for w in ['temps plein', 'full time', 'full-time', 'permanent']):
+            return 'Temps plein'
+        if any(w in text_lower for w in ['temps partiel', 'part time', 'part-time']):
+            return 'Temps partiel'
+        if any(w in text_lower for w in ['contrat', 'contract', 'temporaire']):
+            return 'Contrat'
+        if any(w in text_lower for w in ['stage', 'intern']):
+            return 'Stage'
+        return ''
+
+    @staticmethod
     def _normalize_job_type(text):
         if not text:
             return ''
@@ -91,14 +104,19 @@ class AdzunaScraper:
                     elif salary_max:
                         salary = f"Jusqu'a ${int(salary_max):,}"
 
-                    work_type = self._detect_work_type(
-                        title + ' ' + description + ' ' + loc
-                    )
+                    full_text = title + ' ' + description + ' ' + loc
+                    work_type = self._detect_work_type(full_text)
 
                     contract_type = item.get('contract_type', '')
                     contract_time = item.get('contract_time', '')
                     raw_type = ' '.join(filter(None, [contract_time, contract_type]))
                     job_type = self._normalize_job_type(raw_type)
+
+                    # Fallback: detect from description text
+                    if not job_type:
+                        job_type = self._detect_job_type(full_text)
+                    if not work_type:
+                        work_type = self._detect_work_type(description)
 
                     all_jobs.append({
                         'title': title,
