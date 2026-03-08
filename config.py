@@ -11,7 +11,7 @@ class Config:
     SMTP_LOGIN = os.environ.get('SMTP_LOGIN')
     SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD')
     RECIPIENT_EMAIL = os.environ.get('RECIPIENT_EMAIL', 'valou2244@hotmail.fr')
-    SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'saricaiproooo@gmail.com')
+    SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'saricaiproo@gmail.com')
     APP_PASSWORD = os.environ.get('APP_PASSWORD')
     DATABASE_PATH = os.environ.get('DATABASE_PATH', '/tmp/jobs.db')
     TIMEZONE = 'America/Toronto'
