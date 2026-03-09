@@ -115,6 +115,7 @@ def job_modal_data_filter(job):
         date_posted = format_posted_date_filter(date_posted)
 
     data = {
+        'id': job.get('id', 0),
         'title': job.get('title', '') or '',
         'company': job.get('company', '') or '',
         'location': job.get('location', '') or '',
@@ -126,6 +127,7 @@ def job_modal_data_filter(job):
         'description': job.get('description', '') or '',
         'highlights': highlights,
         'date_posted': date_posted,
+        'applied': bool(job.get('applied', False)),
     }
     # HTML-escape the JSON so it's safe inside a data attribute with single quotes
     raw_json = json.dumps(data, ensure_ascii=False)

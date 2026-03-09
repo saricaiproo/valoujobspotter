@@ -98,6 +98,12 @@
             document.getElementById('modal-date').textContent = data.date_posted ? 'Publiée ' + data.date_posted : '';
             document.getElementById('modal-source').textContent = data.source || '';
             document.getElementById('modal-link').href = data.url;
+            const modalLink = document.getElementById('modal-link');
+            if (!data.applied && data.id) {
+                modalLink.onclick = function() { trackJobVisit(data.id, data.title); };
+            } else {
+                modalLink.onclick = null;
+            }
 
             // Tags: only show what's known + highlights
             const tagsEl = document.getElementById('modal-tags');
@@ -151,6 +157,53 @@
                 document.body.style.overflow = '';
             }
         });
+
+        // --- "As-tu postulé?" prompt when returning from external job site ---
+        let _visitedJob = null;
+
+        function trackJobVisit(jobId, jobTitle) {
+            _visitedJob = { id: jobId, title: jobTitle };
+        }
+
+        window.addEventListener('focus', () => {
+            if (!_visitedJob) return;
+            const job = _visitedJob;
+            _visitedJob = null;
+
+            // Small delay so the page settles
+            setTimeout(() => {
+                showAppliedPrompt(job.id, job.title);
+            }, 600);
+        });
+
+        function showAppliedPrompt(jobId, jobTitle) {
+            // Remove existing prompt if any
+            const old = document.getElementById('applied-prompt');
+            if (old) old.remove();
+
+            const prompt = document.createElement('div');
+            prompt.id = 'applied-prompt';
+            prompt.className = 'applied-prompt';
+            const shortTitle = jobTitle.length > 40 ? jobTitle.substring(0, 40) + '...' : jobTitle;
+            prompt.innerHTML = `
+                <p class="applied-prompt-text">As-tu postulé pour <strong>${shortTitle}</strong>?</p>
+                <div class="applied-prompt-actions">
+                    <form method="POST" action="/toggle-applied/${jobId}" class="inline-form">
+                        <button type="submit" class="btn btn-sm btn-applied-yes">Oui, postulé!</button>
+                    </form>
+                    <button class="btn btn-sm btn-applied-no" onclick="this.closest('.applied-prompt').remove()">Non</button>
+                </div>
+            `;
+            document.body.appendChild(prompt);
+
+            // Auto-dismiss after 15 seconds
+            setTimeout(() => {
+                if (document.getElementById('applied-prompt')) {
+                    prompt.classList.add('fade-out');
+                    setTimeout(() => prompt.remove(), 300);
+                }
+            }, 15000);
+        }
     </script>
     {% block scripts %}{% endblock %}
 </body>

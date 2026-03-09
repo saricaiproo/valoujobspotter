@@ -384,6 +384,88 @@ a:hover {
   background: rgba(76, 175, 80, 0.1);
 }
 
+/* "As-tu postulé?" prompt toast */
+.applied-prompt {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--cream);
+  border: 2px solid #66bb6a;
+  border-radius: 12px;
+  padding: 16px 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  animation: slideUp 0.3s ease-out;
+  max-width: 500px;
+  width: calc(100% - 32px);
+}
+
+.applied-prompt.fade-out {
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px);
+  transition: all 0.3s ease;
+}
+
+.applied-prompt-text {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--espresso);
+  flex: 1;
+}
+
+.applied-prompt-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-applied-yes {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.btn-applied-yes:hover {
+  background: #388E3C;
+}
+
+.btn-applied-no {
+  background: transparent;
+  color: var(--camel);
+  border: 1px solid var(--sand);
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.btn-applied-no:hover {
+  background: var(--linen);
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@media (max-width: 480px) {
+  .applied-prompt {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+    bottom: 16px;
+  }
+}
+
 .job-card:hover {
   box-shadow: var(--shadow-hover);
   transform: translateY(-2px);
@@ -1957,6 +2039,15 @@ a:hover {
   background: rgba(76, 175, 80, 0.15);
   color: #81c784;
   border-color: rgba(76, 175, 80, 0.3);
+}
+
+[data-theme="dark"] .applied-prompt {
+  background: var(--espresso);
+  border-color: #66bb6a;
+}
+
+[data-theme="dark"] .applied-prompt-text {
+  color: var(--cream);
 }
 
 [data-theme="dark"] .job-card--hybrid {

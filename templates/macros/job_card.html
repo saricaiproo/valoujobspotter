@@ -75,7 +75,11 @@
         <div class="footer-left">
             <span class="tag tag-source">{{ job.source }}</span>
         </div>
+        {% if not job.applied %}
+        <a href="{{ job.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-apply" onclick="trackJobVisit({{ job.id }}, '{{ job.title|e }}')">Voir l'offre &rarr;</a>
+        {% else %}
         <a href="{{ job.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-apply">Voir l'offre &rarr;</a>
+        {% endif %}
     </div>
 </div>
 {% endmacro %}
