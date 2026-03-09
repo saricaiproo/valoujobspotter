@@ -17,5 +17,5 @@ class Config:
     ADZUNA_APP_ID = os.environ.get('ADZUNA_APP_ID', '')
     ADZUNA_APP_KEY = os.environ.get('ADZUNA_APP_KEY', '')
     TIMEZONE = 'America/Toronto'
-    SCRAPE_DELAY_MIN = int(os.environ.get('SCRAPE_DELAY_MIN', 2))
-    SCRAPE_DELAY_MAX = int(os.environ.get('SCRAPE_DELAY_MAX', 5))
+    SCRAPE_DELAY_MIN = float(os.environ.get('SCRAPE_DELAY_MIN', 2))
+    SCRAPE_DELAY_MAX = float(os.environ.get('SCRAPE_DELAY_MAX', 5))
