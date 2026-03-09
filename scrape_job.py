@@ -19,6 +19,10 @@ if not db_url:
     print("ERROR: DATABASE_URL not set")
     sys.exit(1)
 
+# Faster delays for GitHub Actions (no need to be as cautious)
+os.environ.setdefault('SCRAPE_DELAY_MIN', '1')
+os.environ.setdefault('SCRAPE_DELAY_MAX', '2')
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -45,7 +49,7 @@ ACTIVE_SCRAPERS = [
     EmploiQuebecScraper,
 ]
 
-MAX_ENRICH_PER_SOURCE = 100
+MAX_ENRICH_PER_SOURCE = 30
 
 
 def main():
