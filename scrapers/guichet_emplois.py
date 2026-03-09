@@ -22,20 +22,23 @@ class GuichetEmploisScraper(BaseScraper):
     def parse_listing(self, soup):
         jobs = []
 
-        # Job Bank uses <a class="jobposting"> links to /jobsearch/jobposting/ID
-        cards = soup.select('a[href*="/jobsearch/jobposting/"]')
-        logger.info(f"[Guichet-Emplois] {len(cards)} liens jobposting trouves")
+        # Job Bank uses <a> links to /rechercheemplois/offredemploi/ID or /offredemploi/ID
+        cards = soup.select('a[href*="/offredemploi/"]')
+        logger.info(f"[Guichet-Emplois] {len(cards)} liens offredemploi trouves")
 
         if not cards:
-            # Fallback: any link that looks like a job posting
-            cards = soup.select('a.jobposting')
-            logger.info(f"[Guichet-Emplois] {len(cards)} a.jobposting (fallback)")
+            # Fallback: try jobposting pattern (English version)
+            cards = soup.select('a[href*="/jobposting/"]')
+            logger.info(f"[Guichet-Emplois] {len(cards)} liens jobposting (fallback)")
 
         for card in cards:
             try:
                 href = card.get('href', '')
                 if not href:
                     continue
+                # Strip jsessionid and query params for clean URL
+                href = re.sub(r';jsessionid=[^?]*', '', href)
+                href = re.sub(r'\?.*$', '', href)
                 if not href.startswith('http'):
                     href = self.BASE_URL + href
 
@@ -70,8 +73,8 @@ class GuichetEmploisScraper(BaseScraper):
                     # Location detection
                     elif any(loc in text_lower for loc in ['(qc)', '(on)', '(bc)', '(ab)', 'québec', 'quebec', 'montréal', 'montreal', 'laval']):
                         location_text = text
-                    # Date detection
-                    elif re.search(r'\d{4}-\d{2}-\d{2}', text) or 'posted' in text_lower or 'publi' in text_lower:
+                    # Date detection (ISO or French like "04 mars 2026")
+                    elif re.search(r'\d{4}-\d{2}-\d{2}', text) or re.search(r'\d{1,2}\s+\w+\s+\d{4}', text) or 'posted' in text_lower or 'publi' in text_lower:
                         date_posted = text
                     # Company (first unmatched short text)
                     elif not company and len(text) < 100:
