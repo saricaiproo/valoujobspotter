@@ -1,6 +1,7 @@
 import logging
+import random
 import requests
-from scrapers.base import extract_highlights
+from scrapers.base import extract_highlights, USER_AGENTS
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +23,10 @@ class RemoteOKScraper:
                 logger.info(f"[RemoteOK] Recherche: {keyword}")
                 url = f"https://remoteok.com/api?tag={requests.utils.quote(keyword)}"
                 headers = {
-                    'User-Agent': 'ValouJobScout/1.0',
+                    'User-Agent': random.choice(USER_AGENTS),
                     'Accept': 'application/json',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Referer': 'https://remoteok.com/',
                 }
                 response = requests.get(url, headers=headers, timeout=15)
                 logger.info(f"[RemoteOK] Status: {response.status_code}")

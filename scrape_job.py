@@ -34,20 +34,10 @@ logger = logging.getLogger(__name__)
 from database import get_active_keywords, insert_job, is_duplicate, init_db
 from scrapers.base import extract_highlights
 
-# Only import the scrapers that actually work
-from scrapers.linkedin import LinkedInScraper
-from scrapers.jobillico import JobillicoScraper
-from scrapers.adzuna import AdzunaScraper
-from scrapers.indeed import IndeedScraper
-from scrapers.emploi_quebec import EmploiQuebecScraper
+# Import all active scrapers
+from scrapers import ALL_SCRAPERS
 
-ACTIVE_SCRAPERS = [
-    LinkedInScraper,
-    JobillicoScraper,
-    AdzunaScraper,
-    IndeedScraper,
-    EmploiQuebecScraper,
-]
+ACTIVE_SCRAPERS = ALL_SCRAPERS
 
 MAX_ENRICH_PER_SOURCE = 30
 

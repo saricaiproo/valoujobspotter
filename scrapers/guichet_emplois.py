@@ -16,7 +16,7 @@ class GuichetEmploisScraper(BaseScraper):
     def build_search_url(self, keyword, location='Montreal'):
         kw = quote_plus(keyword)
         # sort=M = most recent, fpod=7 = posted in last 7 days
-        return f"{self.BASE_URL}/jobsearch/jobsearch?searchstring={kw}&locationstring=Montr%C3%A9al%2C+QC&sort=M&fpod=7"
+        return f"{self.BASE_URL}/jobsearch/rechercheemploi?searchstring={kw}&locationstring=Montr%C3%A9al%2C+QC&sort=M&fpod=7"
 
     def parse_listing(self, soup):
         jobs = []
@@ -32,7 +32,7 @@ class GuichetEmploisScraper(BaseScraper):
 
         if not cards:
             # Last resort: look for any links to job postings
-            all_links = soup.select('a[href*="/jobposting/"]')
+            all_links = soup.select('a[href*="/offredemploi/"]')
             logger.info(f"[Guichet-Emplois] {len(all_links)} liens vers offres (methode 3 fallback)")
             for link_el in all_links:
                 title = link_el.get_text(strip=True)
@@ -77,7 +77,7 @@ class GuichetEmploisScraper(BaseScraper):
         for card in cards:
             try:
                 # Title - usually in a link to the job posting
-                title_el = card.select_one('a[href*="/jobposting/"], h3 a, h2 a, a.resultJobItem')
+                title_el = card.select_one('a[href*="/offredemploi/"], h3 a, h2 a, a.resultJobItem')
                 if not title_el:
                     title_el = card.select_one('a')
                 if not title_el:
