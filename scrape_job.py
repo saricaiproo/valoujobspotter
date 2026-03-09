@@ -37,7 +37,10 @@ from database import get_active_keywords, insert_job, is_duplicate, init_db
 from scrapers.base import extract_highlights
 from scrapers import ALL_SCRAPERS
 
-MAX_ENRICH_PER_SOURCE = 15  # Keep enrichment fast
+# Sources that need enrichment (listing page doesn't give full data)
+# Others (Isarta, Emploi-Québec, Adzuna, RemoteOK, Grenier) already have full data
+ENRICH_SOURCES = {'LinkedIn', 'Jobillico', 'Indeed', 'Guichet-Emplois'}
+MAX_ENRICH = 30
 
 
 def run_single_scraper(ScraperClass, keywords):
@@ -53,9 +56,9 @@ def run_single_scraper(ScraperClass, keywords):
         new_jobs = [j for j in jobs if not is_duplicate(j)]
         logger.info(f"[{name}] {len(new_jobs)} nouvelles (non-doublons)")
 
-        # Enrich (limited for speed)
-        if new_jobs and hasattr(scraper, 'enrich_jobs_batch'):
-            new_jobs = scraper.enrich_jobs_batch(new_jobs, max_jobs=MAX_ENRICH_PER_SOURCE)
+        # Only enrich sources that need it (listing page lacks detail)
+        if name in ENRICH_SOURCES and new_jobs and hasattr(scraper, 'enrich_jobs_batch'):
+            new_jobs = scraper.enrich_jobs_batch(new_jobs, max_jobs=MAX_ENRICH)
 
         # Add highlights
         for job in new_jobs:
