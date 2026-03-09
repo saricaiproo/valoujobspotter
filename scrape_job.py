@@ -63,7 +63,13 @@ def main():
         logger.warning("Aucun mot-clé actif dans la DB. Rien à scraper.")
         return
 
-    logger.info(f"Mots-clés actifs: {keywords}")
+    # Cap keywords to keep scrape time under 20 minutes
+    MAX_KEYWORDS = 10
+    if len(keywords) > MAX_KEYWORDS:
+        logger.info(f"Trop de mots-clés ({len(keywords)}), limité à {MAX_KEYWORDS}")
+        keywords = keywords[:MAX_KEYWORDS]
+
+    logger.info(f"Mots-clés actifs ({len(keywords)}): {keywords}")
 
     total_new = 0
     for ScraperClass in ACTIVE_SCRAPERS:

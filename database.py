@@ -117,30 +117,20 @@ def init_db():
         )
     ''')
 
-    # Insert default keywords
+    # Insert default keywords — kept lean for speed
+    # Each keyword runs across all scrapers with pagination, so fewer = faster
+    # The relevance filter catches variations we don't need as explicit keywords
     default_keywords = [
-        "gestionnaire medias sociaux",
-        "social media manager",
+        "social media",
         "community manager",
-        "coordonnateur medias sociaux",
-        "coordonnatrice medias sociaux",
-        "specialiste medias sociaux",
-        "stratege numerique",
-        "stratege medias sociaux",
-        "chargee de communication",
-        "charge de communication",
-        "marketing numerique",
-        "digital marketing",
+        "coordonnateur marketing",
+        "médias sociaux",
+        "marketing numérique",
+        "chargé de communication",
         "gestionnaire de contenu",
         "content manager",
-        "coordonnateur marketing",
-        "coordonnatrice marketing",
-        "specialiste e-commerce",
-        "responsable communication digitale",
-        "social media coordinator",
         "marketing coordinator",
         "brand manager",
-        "gestionnaire de marque",
     ]
     for kw in default_keywords:
         cur.execute(
@@ -596,9 +586,9 @@ def toggle_applied(job_id):
 def get_job_stats():
     conn = get_db()
     stats = {}
-    stats['total'] = _fetchone(conn, 'SELECT COUNT(*) as c FROM jobs')['c']
+    stats['total'] = _fetchone(conn, 'SELECT COUNT(*) as c FROM jobs WHERE hidden = FALSE')['c']
     stats['today'] = _fetchone(conn,
-        "SELECT COUNT(*) as c FROM jobs WHERE date_scraped::date = CURRENT_DATE"
+        "SELECT COUNT(*) as c FROM jobs WHERE hidden = FALSE AND date_scraped::date = CURRENT_DATE"
     )['c']
     stats['favorites'] = _fetchone(conn,
         'SELECT COUNT(*) as c FROM jobs WHERE favorite = TRUE'
