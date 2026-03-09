@@ -288,23 +288,50 @@ class GrenierScraper(BaseScraper):
                     return text
         return ''
 
+    @staticmethod
+    def _normalize_accents(text):
+        """Strip French accents and unicode middle-dots for flexible matching."""
+        replacements = {
+            'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+            'à': 'a', 'â': 'a', 'ä': 'a',
+            'ù': 'u', 'û': 'u', 'ü': 'u',
+            'ô': 'o', 'ö': 'o',
+            'î': 'i', 'ï': 'i',
+            'ç': 'c',
+            '·': '',   # middle-dot (e.g. "Chargé·e" -> "Chargée" after accent strip -> "Chargee")
+            '\u00b7': '',  # middle-dot alternate
+            '\u2027': '',  # hyphenation point
+        }
+        for char, repl in replacements.items():
+            text = text.replace(char, repl)
+        return text
+
     def _filter_by_keywords(self, jobs, keywords, location):
         """Filter jobs by keyword relevance. Keep a job if any keyword matches
         its title, company, description, or location."""
         if not keywords:
             return jobs
 
-        # Normalize keywords for matching
+        # Normalize keywords for matching (full phrase patterns)
         kw_patterns = []
         for kw in keywords:
             # Escape special regex chars but allow basic matching
-            pattern = re.escape(kw.lower())
+            pattern = re.escape(self._normalize_accents(kw.lower()))
             # Allow flexible whitespace/hyphen between words
             pattern = pattern.replace(r'\ ', r'[\s\-]+')
             kw_patterns.append(re.compile(pattern, re.IGNORECASE))
 
-        # Also filter by location if specified
-        loc_lower = location.lower() if location else ''
+        # Build individual word patterns as fallback (words longer than 3 chars)
+        kw_word_patterns = []
+        for kw in keywords:
+            words = self._normalize_accents(kw.lower()).split()
+            for word in words:
+                if len(word) > 3:
+                    word_pat = re.compile(re.escape(word), re.IGNORECASE)
+                    kw_word_patterns.append(word_pat)
+
+        # Also filter by location if specified — normalize accents for comparison
+        loc_lower = self._normalize_accents(location.lower()) if location else ''
 
         filtered = []
         for job in jobs:
@@ -314,20 +341,24 @@ class GrenierScraper(BaseScraper):
                 job.get('description', ''),
                 job.get('location', ''),
             ])).lower()
+            # Strip middle-dots and accents for matching
+            searchable = self._normalize_accents(searchable)
 
-            # Check keyword match
+            # Check keyword match: full phrase first, then individual words as fallback
             keyword_match = any(p.search(searchable) for p in kw_patterns)
+            if not keyword_match:
+                keyword_match = any(p.search(searchable) for p in kw_word_patterns)
             if not keyword_match:
                 continue
 
             # Check location match (if specified, the job location should
             # contain the target or be empty — empty means we keep it)
             if loc_lower:
-                job_loc = job.get('location', '').lower()
+                job_loc = self._normalize_accents(job.get('location', '').lower())
                 # Keep if no location specified on job or if it matches
                 if job_loc and loc_lower not in job_loc and job_loc not in loc_lower:
                     # Also check province-level match for Quebec jobs
-                    if 'qc' not in job_loc and 'québec' not in job_loc and 'quebec' not in job_loc:
+                    if 'qc' not in job_loc and 'quebec' not in job_loc:
                         continue
 
             filtered.append(job)

@@ -95,10 +95,11 @@ class IndeedScraper(BaseScraper):
     def scrape(self, keywords, location='Montreal'):
         all_jobs = []
         for keyword in keywords:
-            jobs = self._scrape_html(keyword, location)
+            # Try RSS first (less likely to be blocked by Cloudflare)
+            jobs = self._scrape_rss(keyword, location)
             if not jobs:
-                # Fallback to RSS if HTML scraping fails
-                jobs = self._scrape_rss(keyword, location)
+                # Fallback to HTML scraping
+                jobs = self._scrape_html(keyword, location)
             all_jobs.extend(jobs)
         return all_jobs
 

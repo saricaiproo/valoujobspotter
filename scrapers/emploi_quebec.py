@@ -50,7 +50,7 @@ class EmploiQuebecScraper(BaseScraper):
                 "mrc": [],
                 "bsq": [],
                 "scian": [],
-                "postedSince": "7",  # Last 7 days
+                "postedSince": "30",  # Last 30 days (7 was too restrictive)
                 "excludeAgencies": False,
                 "isUkrainian": False,
                 "isExperimente": False,
@@ -93,7 +93,11 @@ class EmploiQuebecScraper(BaseScraper):
         for keyword in keywords:
             try:
                 logger.info(f"[Emploi-Québec] Recherche: {keyword}")
+                # Try with region filter first, then without if 0 results
                 data = self._search_api(keyword)
+                if not data or not data.get('items'):
+                    logger.info(f"[Emploi-Québec] 0 résultats avec filtre région, essai sans filtre...")
+                    data = self._search_api(keyword, regions=[])
                 if not data:
                     continue
 

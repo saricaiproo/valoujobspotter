@@ -14,11 +14,42 @@ class RemoteOKScraper:
         # Everything on RemoteOK is remote by definition
         return 'teletravail'
 
+    # Map French keywords to English equivalents for this English-only site
+    KEYWORD_MAP = {
+        'médias sociaux': 'social media',
+        'medias sociaux': 'social media',
+        'marketing numérique': 'digital marketing',
+        'marketing numerique': 'digital marketing',
+        'gestionnaire de contenu': 'content manager',
+        'chargé de communication': 'communications',
+        'charge de communication': 'communications',
+        'coordonnateur marketing': 'marketing coordinator',
+        'community manager': 'community manager',
+        'social media': 'social media',
+        'content manager': 'content manager',
+        'marketing coordinator': 'marketing coordinator',
+        'brand manager': 'brand manager',
+    }
+
+    def _translate_keyword(self, keyword):
+        """Convert French keyword to English for RemoteOK search."""
+        kw_lower = keyword.lower()
+        if kw_lower in self.KEYWORD_MAP:
+            return self.KEYWORD_MAP[kw_lower]
+        return keyword
+
     def scrape(self, keywords, location='Montreal'):
         all_jobs = []
         seen_urls = set()
+        seen_keywords = set()
 
         for keyword in keywords:
+            # Translate to English and deduplicate
+            en_keyword = self._translate_keyword(keyword)
+            if en_keyword.lower() in seen_keywords:
+                continue
+            seen_keywords.add(en_keyword.lower())
+            keyword = en_keyword
             try:
                 logger.info(f"[RemoteOK] Recherche: {keyword}")
                 url = f"https://remoteok.com/api?tag={requests.utils.quote(keyword)}"

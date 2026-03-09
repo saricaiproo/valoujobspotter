@@ -1,4 +1,5 @@
 import logging
+import re
 from urllib.parse import quote_plus
 from scrapers.base import BaseScraper
 
@@ -8,7 +9,7 @@ logger = logging.getLogger(__name__)
 class GuichetEmploisScraper(BaseScraper):
     """
     Guichet-Emplois (Job Bank Canada) - Government of Canada job board.
-    French-language government job site, very scraper-friendly.
+    French-language government job site.
     """
     SOURCE_NAME = 'Guichet-Emplois'
     BASE_URL = 'https://www.guichetemplois.gc.ca'
@@ -16,52 +17,75 @@ class GuichetEmploisScraper(BaseScraper):
     def build_search_url(self, keyword, location='Montreal'):
         kw = quote_plus(keyword)
         # sort=M = most recent, fpod=7 = posted in last 7 days
-        return f"{self.BASE_URL}/jobsearch/rechercheemploi?searchstring={kw}&locationstring=Montr%C3%A9al%2C+QC&sort=M&fpod=7"
+        return f"{self.BASE_URL}/jobsearch/rechercheemplois?searchstring={kw}&locationstring=Montr%C3%A9al%2C+QC&sort=M&fpod=7"
 
     def parse_listing(self, soup):
         jobs = []
 
-        # Job Bank uses article elements with class 'results-card'
-        cards = soup.select('article.resultJobItem, article[class*="result"], div.results-card')
-        logger.info(f"[Guichet-Emplois] {len(cards)} cartes (methode 1)")
+        # Job Bank uses <a class="jobposting"> links to /jobsearch/jobposting/ID
+        cards = soup.select('a[href*="/jobsearch/jobposting/"]')
+        logger.info(f"[Guichet-Emplois] {len(cards)} liens jobposting trouves")
 
         if not cards:
-            # Fallback: try noc-result items or generic job list items
-            cards = soup.select('div.job-result, div[class*="job-result"], a.resultJobItem')
-            logger.info(f"[Guichet-Emplois] {len(cards)} cartes (methode 2 fallback)")
+            # Fallback: any link that looks like a job posting
+            cards = soup.select('a.jobposting')
+            logger.info(f"[Guichet-Emplois] {len(cards)} a.jobposting (fallback)")
 
-        if not cards:
-            # Last resort: look for any links to job postings
-            all_links = soup.select('a[href*="/offredemploi/"]')
-            logger.info(f"[Guichet-Emplois] {len(all_links)} liens vers offres (methode 3 fallback)")
-            for link_el in all_links:
-                title = link_el.get_text(strip=True)
-                href = link_el.get('href', '')
-                if not title or not href:
+        for card in cards:
+            try:
+                href = card.get('href', '')
+                if not href:
                     continue
                 if not href.startswith('http'):
                     href = self.BASE_URL + href
 
-                # Try to get parent container for more info
-                parent = link_el.find_parent(['article', 'div', 'li'])
+                # Extract title from heading or first significant text
+                title = ''
+                title_el = card.select_one('h3, h2, h4, span.noctitle')
+                if title_el:
+                    title = title_el.get_text(strip=True)
+                if not title:
+                    # Get the first line of text as title
+                    title = card.get_text(' ', strip=True).split('\n')[0].strip()
+                if not title or len(title) < 5:
+                    continue
+
+                # Parse <li> elements inside the card for metadata
                 company = ''
                 location_text = ''
                 salary = ''
+                date_posted = ''
 
-                if parent:
-                    # Look for company/employer
-                    for el in parent.select('span, div, li'):
-                        text = el.get_text(strip=True)
-                        if not text or text == title:
-                            continue
-                        if '$' in text or 'heure' in text.lower() or 'annuel' in text.lower():
-                            salary = text
-                        elif any(loc in text.lower() for loc in ['qc', 'québec', 'quebec', 'montréal', 'montreal', 'laval']):
-                            location_text = text
-                        elif not company and len(text) < 80:
-                            company = text
+                li_elements = card.select('li')
+                for li in li_elements:
+                    text = li.get_text(strip=True)
+                    if not text or text == title:
+                        continue
 
-                work_type = self._detect_work_type(title + ' ' + location_text)
+                    text_lower = text.lower()
+
+                    # Salary detection
+                    if '$' in text or '/h' in text_lower or 'heure' in text_lower or 'annuel' in text_lower:
+                        salary = text
+                    # Location detection
+                    elif any(loc in text_lower for loc in ['(qc)', '(on)', '(bc)', '(ab)', 'québec', 'quebec', 'montréal', 'montreal', 'laval']):
+                        location_text = text
+                    # Date detection
+                    elif re.search(r'\d{4}-\d{2}-\d{2}', text) or 'posted' in text_lower or 'publi' in text_lower:
+                        date_posted = text
+                    # Company (first unmatched short text)
+                    elif not company and len(text) < 100:
+                        company = text
+
+                # Detect work type from badges/labels
+                card_text = card.get_text(' ', strip=True).lower()
+                work_type = ''
+                if 'hybrid' in card_text or 'hybride' in card_text:
+                    work_type = 'hybride'
+                elif 'remote' in card_text or 'télétravail' in card_text or 'teletravail' in card_text:
+                    work_type = 'teletravail'
+                elif 'on-site' in card_text or 'présentiel' in card_text or 'sur place' in card_text:
+                    work_type = 'presentiel'
 
                 jobs.append({
                     'title': title,
@@ -70,65 +94,7 @@ class GuichetEmploisScraper(BaseScraper):
                     'url': href,
                     'salary': salary,
                     'work_type': work_type,
-                    'description': '',
-                })
-            return jobs
-
-        for card in cards:
-            try:
-                # Title - usually in a link to the job posting
-                title_el = card.select_one('a[href*="/offredemploi/"], h3 a, h2 a, a.resultJobItem')
-                if not title_el:
-                    title_el = card.select_one('a')
-                if not title_el:
-                    continue
-
-                title = title_el.get_text(strip=True)
-                if not title:
-                    continue
-
-                link = title_el.get('href', '')
-                if link and not link.startswith('http'):
-                    link = self.BASE_URL + link
-                if not link:
-                    continue
-
-                # Company
-                company = ''
-                company_el = card.select_one('span.business, div.business, li.business, span[class*="employer"], span[class*="company"]')
-                if company_el:
-                    company = company_el.get_text(strip=True)
-                if not company:
-                    # Try second element that looks like company
-                    spans = card.select('span, li')
-                    for s in spans:
-                        text = s.get_text(strip=True)
-                        if text and text != title and '$' not in text and len(text) < 80:
-                            if not any(loc in text.lower() for loc in ['qc', 'montréal', 'montreal']):
-                                company = text
-                                break
-
-                # Location
-                location_text = ''
-                loc_el = card.select_one('span.location, div.location, li.location, span[class*="location"]')
-                if loc_el:
-                    location_text = loc_el.get_text(strip=True)
-
-                # Salary
-                salary = ''
-                sal_el = card.select_one('span.salary, div.salary, li.salary, span[class*="salary"]')
-                if sal_el:
-                    salary = sal_el.get_text(strip=True)
-
-                work_type = self._detect_work_type(title + ' ' + location_text)
-
-                jobs.append({
-                    'title': title,
-                    'company': company,
-                    'location': location_text,
-                    'url': link,
-                    'salary': salary,
-                    'work_type': work_type,
+                    'date_posted': date_posted,
                     'description': '',
                 })
             except Exception as e:
@@ -136,13 +102,3 @@ class GuichetEmploisScraper(BaseScraper):
                 continue
 
         return jobs
-
-    def _detect_work_type(self, text):
-        text_lower = text.lower()
-        if 'télétravail' in text_lower or 'remote' in text_lower or 'teletravail' in text_lower:
-            return 'teletravail'
-        elif 'hybride' in text_lower or 'hybrid' in text_lower:
-            return 'hybride'
-        elif 'présentiel' in text_lower or 'sur place' in text_lower:
-            return 'presentiel'
-        return ''
