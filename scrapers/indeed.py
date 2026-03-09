@@ -7,19 +7,33 @@ from scrapers.base import BaseScraper, USER_AGENTS
 
 logger = logging.getLogger(__name__)
 
-# Try cloudscraper first (handles Cloudflare), fallback to requests
+# Try httpx (HTTP/2, least likely to be blocked), then cloudscraper, then requests
+_httpx_client = None
+HAS_HTTPX = False
+HAS_CLOUDSCRAPER = False
+
+try:
+    import httpx
+    _httpx_client = httpx.Client(http2=True, follow_redirects=True, timeout=30)
+    HAS_HTTPX = True
+    logger.info("[Indeed] httpx (HTTP/2) disponible")
+except ImportError:
+    pass
+
 try:
     import cloudscraper
-    _scraper = cloudscraper.create_scraper(
+    _cloudscraper = cloudscraper.create_scraper(
         browser={'browser': 'chrome', 'platform': 'windows', 'desktop': True}
     )
     HAS_CLOUDSCRAPER = True
     logger.info("[Indeed] cloudscraper disponible")
 except ImportError:
+    pass
+
+if not HAS_HTTPX and not HAS_CLOUDSCRAPER:
     import requests
-    _scraper = requests.Session()
-    HAS_CLOUDSCRAPER = False
-    logger.info("[Indeed] cloudscraper non disponible, utilisation de requests")
+    _fallback = requests.Session()
+    logger.info("[Indeed] fallback sur requests")
 
 
 class IndeedScraper(BaseScraper):
@@ -43,13 +57,12 @@ class IndeedScraper(BaseScraper):
         return f"{self.BASE_URL}/rss?q={kw}&l={loc}&sort=date&fromage=7"
 
     def _get(self, url):
-        """Make a GET request using cloudscraper or requests."""
+        """Make a GET request: try httpx (HTTP/2) → cloudscraper → requests."""
         headers = {
             'User-Agent': random.choice(USER_AGENTS),
             'Accept-Language': 'fr-CA,fr;q=0.9,en-CA;q=0.8,en;q=0.7',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
             'Sec-Fetch-Dest': 'document',
             'Sec-Fetch-Mode': 'navigate',
             'Sec-Fetch-Site': 'none',
@@ -57,8 +70,27 @@ class IndeedScraper(BaseScraper):
             'Upgrade-Insecure-Requests': '1',
         }
         self._delay()
-        response = _scraper.get(url, headers=headers, timeout=30)
-        return response
+
+        # Try httpx (HTTP/2) first — least likely to be blocked
+        if HAS_HTTPX:
+            try:
+                response = _httpx_client.get(url, headers=headers)
+                if response.status_code == 200:
+                    return response
+                logger.debug(f"[Indeed] httpx status {response.status_code}, trying cloudscraper")
+            except Exception as e:
+                logger.debug(f"[Indeed] httpx failed: {e}")
+
+        # Try cloudscraper (handles Cloudflare JS challenges)
+        if HAS_CLOUDSCRAPER:
+            try:
+                response = _cloudscraper.get(url, headers=headers, timeout=30)
+                return response
+            except Exception as e:
+                logger.debug(f"[Indeed] cloudscraper failed: {e}")
+
+        # Last resort: plain requests
+        return _fallback.get(url, headers=headers, timeout=30)
 
     def scrape(self, keywords, location='Montreal'):
         all_jobs = []
