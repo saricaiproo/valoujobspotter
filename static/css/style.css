@@ -1608,9 +1608,10 @@ a:hover {
 
 .bug-container {
   position: relative;
-  width: 200px;
-  height: 120px;
+  width: 240px;
+  height: 140px;
   margin: 0 auto 30px;
+  overflow: visible;
 }
 
 /* The pixel ladybug */
@@ -1620,16 +1621,60 @@ a:hover {
   top: 50%;
   transform: translate(-50%, -50%);
   animation: bugWalk 4s ease-in-out infinite;
-  cursor: pointer;
-  transition: transform 0.1s;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: filter 0.2s;
 }
 
 .pixel-bug:hover {
-  transform: translate(-50%, -50%) scale(1.1);
+  filter: brightness(1.1);
 }
 
-.pixel-bug.jump {
-  animation: bugJump 0.5s ease !important;
+/* While being dragged */
+.pixel-bug.grabbed {
+  animation: none !important;
+  cursor: grabbing;
+  z-index: 10;
+  filter: drop-shadow(0 8px 16px rgba(0,0,0,0.25));
+  transition: filter 0.15s, transform 0.05s;
+}
+
+/* Pinch effect when grabbed */
+.pixel-bug.grabbed .bug-body {
+  animation: pinchSquish 0.3s ease forwards;
+}
+
+/* Legs wiggle faster when grabbed */
+.pixel-bug.grabbed .leg {
+  animation-duration: 0.15s !important;
+}
+
+/* Wings flutter when grabbed */
+.pixel-bug.grabbed .bug-wing-left {
+  animation: wingPanic 0.2s ease-in-out infinite !important;
+}
+.pixel-bug.grabbed .bug-wing-right {
+  animation: wingPanic 0.2s ease-in-out infinite 0.1s !important;
+}
+
+/* Drop animation — bug falls back to floor */
+.pixel-bug.dropping {
+  animation: none !important;
+  transition: top 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+              left 0.4s ease-out,
+              transform 0.4s ease-out,
+              filter 0.3s;
+  filter: none;
+}
+
+/* Shadow grows when bug is lifted */
+.pixel-bug.grabbed .bug-shadow {
+  animation: none;
+  transform: translateX(-50%) scale(1.8);
+  opacity: 0.3;
+  transition: transform 0.2s, opacity 0.2s;
 }
 
 .bug-body {
@@ -1853,12 +1898,17 @@ a:hover {
   100% { left: 20%; transform: translate(-50%, -50%) scaleX(1); }
 }
 
-@keyframes bugJump {
-  0% { transform: translate(-50%, -50%); }
-  30% { transform: translate(-50%, -100%) rotate(10deg); }
-  50% { transform: translate(-50%, -120%) rotate(-5deg); }
-  70% { transform: translate(-50%, -80%) rotate(5deg); }
-  100% { transform: translate(-50%, -50%) rotate(0deg); }
+@keyframes pinchSquish {
+  0% { transform: scale(1, 1); }
+  40% { transform: scale(1.15, 0.85); }
+  70% { transform: scale(0.95, 1.05); }
+  100% { transform: scale(1.05, 0.95); }
+}
+
+@keyframes wingPanic {
+  0%, 100% { transform: scaleX(1) rotate(0deg); }
+  25% { transform: scaleX(0.7) rotate(-5deg); }
+  75% { transform: scaleX(0.7) rotate(5deg); }
 }
 
 @keyframes legMove {

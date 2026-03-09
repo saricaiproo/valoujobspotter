@@ -226,16 +226,98 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Make bug interactive
-    const overlay = document.getElementById('loading-overlay');
+    // Draggable ladybug — works with mouse and touch
     const bug = document.getElementById('pixel-bug');
-    if (overlay && bug) {
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay || e.target.closest('.loading-scene')) {
-                bug.classList.add('jump');
-                setTimeout(() => bug.classList.remove('jump'), 500);
+    const bugContainer = document.getElementById('bug-container');
+    if (bug && bugContainer) {
+        let isDragging = false;
+        let dragOffsetX = 0, dragOffsetY = 0;
+        let bugX = 0, bugY = 0;
+        let containerRect = null;
+
+        function getPointerPos(e) {
+            if (e.touches && e.touches.length > 0) {
+                return { x: e.touches[0].clientX, y: e.touches[0].clientY };
             }
-        });
+            return { x: e.clientX, y: e.clientY };
+        }
+
+        function startDrag(e) {
+            // Only grab if directly clicking/touching the bug
+            if (!e.target.closest('.pixel-bug')) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            isDragging = true;
+            containerRect = bugContainer.getBoundingClientRect();
+            const pos = getPointerPos(e);
+            const bugRect = bug.getBoundingClientRect();
+
+            // Offset from pointer to bug center
+            dragOffsetX = pos.x - (bugRect.left + bugRect.width / 2);
+            dragOffsetY = pos.y - (bugRect.top + bugRect.height / 2);
+
+            // Store current position from animation
+            bugX = bugRect.left + bugRect.width / 2 - containerRect.left;
+            bugY = bugRect.top + bugRect.height / 2 - containerRect.top;
+
+            // Switch to manual positioning
+            bug.classList.add('grabbed');
+            bug.classList.remove('dropping');
+            bug.style.left = bugX + 'px';
+            bug.style.top = bugY + 'px';
+            bug.style.transform = 'translate(-50%, -50%) scale(1.15)';
+        }
+
+        function moveDrag(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+
+            const pos = getPointerPos(e);
+            bugX = pos.x - dragOffsetX - containerRect.left;
+            bugY = pos.y - dragOffsetY - containerRect.top;
+
+            bug.style.left = bugX + 'px';
+            bug.style.top = bugY + 'px';
+
+            // Tilt based on horizontal movement direction
+            const tilt = Math.max(-15, Math.min(15, (pos.x - (containerRect.left + containerRect.width / 2)) * 0.05));
+            bug.style.transform = 'translate(-50%, -50%) scale(1.15) rotate(' + tilt + 'deg)';
+        }
+
+        function endDrag(e) {
+            if (!isDragging) return;
+            isDragging = false;
+
+            // Animate drop back to floor (center-bottom of container)
+            bug.classList.remove('grabbed');
+            bug.classList.add('dropping');
+
+            const restY = containerRect.height / 2;  // original center Y
+            bug.style.top = restY + 'px';
+            bug.style.transform = 'translate(-50%, -50%) scale(1)';
+
+            // After drop animation, resume walking
+            setTimeout(() => {
+                bug.classList.remove('dropping');
+                bug.style.left = '';
+                bug.style.top = '';
+                bug.style.transform = '';
+            }, 450);
+        }
+
+        // Mouse events
+        bug.addEventListener('mousedown', startDrag);
+        document.addEventListener('mousemove', moveDrag);
+        document.addEventListener('mouseup', endDrag);
+
+        // Touch events (mobile)
+        bug.addEventListener('touchstart', startDrag, { passive: false });
+        document.addEventListener('touchmove', moveDrag, { passive: false });
+        document.addEventListener('touchend', endDrag);
+
+        // Prevent overlay click from doing anything weird when bug is clicked
+        bug.addEventListener('click', (e) => e.stopPropagation());
     }
 });
 </script>
