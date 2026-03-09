@@ -23,7 +23,7 @@ class JobillicoScraper(BaseScraper):
         """Override to add pagination — scrape pages 1-3 for each keyword."""
         all_jobs = []
         for keyword in keywords:
-            for page in range(1, 4):  # pages 1, 2, 3
+            for page in range(1, 2):  # 1 page per keyword
                 try:
                     url = self.build_search_url(keyword, location, page=page)
                     logger.info(f"[Jobillico] Recherche: {keyword} @ {location} (page {page})")

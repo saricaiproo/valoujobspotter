@@ -73,7 +73,7 @@ class IndeedScraper(BaseScraper):
     def _scrape_html(self, keyword, location):
         """Try to scrape Indeed via HTML with embedded JSON extraction."""
         jobs = []
-        for page in range(3):  # 3 pages (0, 10, 20)
+        for page in range(1):  # 1 page per keyword
             start = page * 10
             try:
                 url = self.build_search_url(keyword, location, start=start)

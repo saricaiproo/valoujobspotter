@@ -23,7 +23,7 @@ class GrenierScraper(BaseScraper):
     # Only fetch jobs from the last 14 days (by datePosted in JSON-LD)
     MAX_AGE_DAYS = 14
     # Cap page fetches to avoid timeouts
-    MAX_PAGES = 50
+    MAX_PAGES = 30
     # Parallel workers for fetching individual job pages
     WORKERS = 5
 

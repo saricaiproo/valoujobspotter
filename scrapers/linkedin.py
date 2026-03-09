@@ -21,7 +21,7 @@ class LinkedInScraper(BaseScraper):
         """Override to add pagination — scrape pages 1-3 for each keyword."""
         all_jobs = []
         for keyword in keywords:
-            for page in range(3):  # pages 0, 1, 2
+            for page in range(1):  # 1 page (60 results) per keyword
                 try:
                     start = page * 25
                     url = self.build_search_url(keyword, location, start=start)
